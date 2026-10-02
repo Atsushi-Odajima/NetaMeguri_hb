@@ -224,7 +224,8 @@ export async function recycle(ctx: Ctx, contentId: string, input: { mode: string
   const c = getContent(ctx, contentId);
   if (!c.ideaId) throw badRequest('Ideaに紐づかないContentは再構成できません');
   if (c.recycleState === 'do_not_reuse') throw badRequest('Do Not Reuseに設定されています');
-  const platform = input.platform ?? (input.mode === 'longer' ? 'blog' : input.mode === 'shorter' ? 'x' : c.platform);
+  const platform = input.platform ?? (input.mode === 'longer' ? 'blog' : input.mode === 'shorter' ? 'x' : input.mode === 'different_platform' ? (c.platform === 'linkedin' ? 'threads' : 'linkedin') : c.platform);
+  if (input.mode === 'different_platform' && platform === c.platform) throw badRequest('別Platformを指定してください');
   let angle = RECYCLE_ANGLE[input.mode];
   if (input.mode === 'new_angle') {
     const idea = getIdea(ctx, c.ideaId);

@@ -46,7 +46,7 @@ function rateLimit(key: string, max: number, windowMs = 60_000) {
   if (++w.n > max) throw new AppError(429, 'rate_limited', 'リクエストが多すぎます。しばらく待ってから再試行してください');
 }
 
-export interface ServerOptions { webDist?: string; secureCookies?: boolean; allowSample?: boolean; logger?: boolean }
+export interface ServerOptions { webDist?: string; secureCookies?: boolean; allowSample?: boolean; logger?: boolean; testMode?: boolean }
 
 export async function buildServer(app: App, opts: ServerOptions = {}): Promise<FastifyInstance> {
   const f = Fastify({ logger: opts.logger ? { redact: ['req.headers.cookie', 'req.headers.authorization', 'req.headers["x-csrf-token"]'] } : false, bodyLimit: 12 * 1024 * 1024, trustProxy: true });
@@ -76,8 +76,12 @@ export async function buildServer(app: App, opts: ServerOptions = {}): Promise<F
   f.addHook('preHandler', async (req) => {
     if (!req.url.startsWith('/api/')) return;
     const ip = req.ip;
-    if (req.url.startsWith('/api/auth/')) rateLimit(`auth:${ip}`, 30);
-    else if (req.method !== 'GET') rateLimit(`w:${ip}`, 600);
+    const path = req.url.split('?')[0];
+    if (req.method === 'POST' && (path === '/api/auth/login' || path === '/api/auth/register')) {
+      rateLimit(`auth:${ip}`, Number(process.env.CONTENTLOOP_AUTH_RATE_IP ?? 20));
+      const email = String((req.body as any)?.email ?? '').toLowerCase();
+      if (email) rateLimit(`auth-email:${email}`, Number(process.env.CONTENTLOOP_AUTH_RATE_EMAIL ?? 10));
+    } else if (req.method !== 'GET') rateLimit(`w:${ip}`, 600);
     const sid = req.cookies[COOKIE];
     const u = W.sessionUser(app.db, sid, app.clock.now());
     if (u) {
@@ -299,6 +303,24 @@ export async function buildServer(app: App, opts: ServerOptions = {}): Promise<F
   r('get', '/notifications', (ctx) => N.listNotifications(ctx));
   r('post', '/notifications/:id/read', (ctx, req) => { N.markRead(ctx, p(req).id); return { ok: true }; });
   r('get', '/ai-usage', (ctx) => ({ status: app.ai.status(ctx.workspaceId), recent: app.db.all('SELECT provider, task, tokens_in, tokens_out, cost_usd, created_at FROM ai_usage WHERE workspace_id = ? ORDER BY created_at DESC LIMIT 50', ctx.workspaceId) }));
+
+  // ---- E2E-only hooks (never enabled in production) ----
+  if (opts.testMode && process.env.NODE_ENV !== 'production') {
+    f.post('/api/test/advance', async (req) => {
+      const c = app.clock as any;
+      if (typeof c.offsetMs !== 'number') throw badRequest('clock not adjustable');
+      c.offsetMs += Number((req.body as any)?.days ?? 0) * 86400_000;
+      return { now: app.clock.now().toISOString() };
+    });
+    f.post('/api/test/sandbox', async (req) => {
+      const b = req.body as any;
+      const a = app.connectors.get(`sandbox:${b.platform}`) as any;
+      if (!a) throw badRequest('no sandbox');
+      if (b.failNext !== undefined) a.failNext = b.failNext;
+      return { remotePosts: a.remote.size, publishCalls: a.publishCalls };
+    });
+    f.post('/api/test/run-jobs', async () => P.runDueJobs(app));
+  }
 
   // signed media URLs (no session needed, HMAC + expiry; key includes workspace id)
   f.get('/media/*', async (req, reply) => {

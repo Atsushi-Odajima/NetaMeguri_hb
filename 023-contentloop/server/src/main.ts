@@ -4,13 +4,15 @@ import { buildServer } from './api/server.js';
 import { runDueJobs, connectorHealth } from './domain/publish.js';
 import { systemCtx } from './domain/workspace.js';
 import { seedSample } from './seed/sample.js';
+import { OffsetClock } from './lib/util.js';
 
 const prod = process.env.NODE_ENV === 'production';
 const dataDir = resolve(process.env.CONTENTLOOP_DATA_DIR ?? './data');
-const app = createApp({ dbPath: `${dataDir}/contentloop.db`, storageDir: `${dataDir}/objects`, sandboxConnectors: process.env.CONTENTLOOP_SANDBOX !== '0' });
+const testMode = !prod && process.env.CONTENTLOOP_TEST_MODE === '1';
+const app = createApp({ dbPath: `${dataDir}/contentloop.db`, storageDir: `${dataDir}/objects`, sandboxConnectors: process.env.CONTENTLOOP_SANDBOX !== '0', ...(testMode ? { clock: new OffsetClock() } : {}) });
 
 const allowSample = !prod || process.env.CONTENTLOOP_ALLOW_SAMPLE === '1';
-const server = await buildServer(app, { webDist: resolve('dist/web'), secureCookies: prod, allowSample, logger: true });
+const server = await buildServer(app, { webDist: resolve('dist/web'), secureCookies: prod, allowSample, logger: process.env.CONTENTLOOP_LOG !== '0', testMode });
 
 // Demo user (dev only): demo@sample-build-lab.invalid / demo-password-123
 if (allowSample && process.env.CONTENTLOOP_SEED_DEMO !== '0' && !app.db.get('SELECT 1 FROM users LIMIT 1')) {

@@ -55,7 +55,7 @@ describe('ContentLoop required tests', () => {
     const t = await importSource(env.ctx, { type: 'video', title: '動画', transcript: '1\n00:00:00,000 --> 00:00:05,000\nこんにちは、AI開発の話です。\n\n2\n00:00:05,000 --> 00:00:09,000\n[inaudible]\n\n3\n00:00:09,000 --> 00:00:15,000\nテストを先に書きましょう。', rightsStatus: 'owned' });
     expect(t.segments).toHaveLength(3);
     expect(t.segments[1].inaudible).toBe(true);
-    expect(t.text).not.toContain('inaudible'); // inaudible content is not filled in
+    expect((t as any).text).not.toContain('inaudible'); // inaudible content is not filled in
   });
 
   it('02 Duplicate import is prevented (same text / same URL)', async () => {

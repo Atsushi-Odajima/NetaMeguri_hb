@@ -9,7 +9,8 @@ import { createIdea, recordIdeaUse, similarIdeas } from './ideas.js';
 import { isPlatform, PLATFORMS } from './platforms.js';
 import { recordSnapshot } from './performance.js';
 import { getCampaign, calendar } from './campaigns.js';
-import { indexDoc } from './index.js';
+import { indexDoc, LOCAL_EMBED_MODEL } from './index.js';
+import { hashVector } from '../lib/text.js';
 import { utcToZoned } from '../lib/util.js';
 
 export const APP_VERSION = '0.1.0';
@@ -179,21 +180,30 @@ export function restoreWorkspace(ctx: Ctx, zip: Uint8Array) {
   if (nonEmpty) throw badRequest('復元先のWorkspaceは空である必要があります');
   const { data, workspace } = JSON.parse(payload);
   const order = [...BACKUP_TABLES, 'connectors'];
+  // Re-key every record so a backup can be restored next to its original (same DB) or into a fresh instance.
+  const idMap = new Map<string, string>();
+  for (const t of order) for (const row of data[t] ?? []) if (typeof row.id === 'string') idMap.set(row.id, id(row.id.split('_')[0] || 'r'));
+  idMap.set(manifest.workspaceId, ctx.workspaceId);
+  const remapStr = (v: string) => idMap.get(v) ?? (/^[\[{]/.test(v) ? v.replace(/[a-z]+_[0-9a-f]{20}/g, (m) => idMap.get(m) ?? m) : v);
   db.tx(() => {
     if (workspace?.settings) db.run('UPDATE workspaces SET settings = ?, timezone = ? WHERE id = ?', workspace.settings, workspace.timezone, ctx.workspaceId);
     for (const t of order) {
       for (const row of data[t] ?? []) {
-        const r = { ...row, workspace_id: ctx.workspaceId };
+        const r: Record<string, any> = {};
+        for (const [k, v] of Object.entries(row)) r[k] = typeof v === 'string' ? remapStr(v) : v;
+        r.workspace_id = ctx.workspaceId;
         if (t === 'connectors') Object.assign(r, { token_enc: null, refresh_enc: null, status: 'disconnected' });
+        if (t === 'publish_jobs') r.idempotency_key = sha256(`${row.idempotency_key}|${ctx.workspaceId}`);
+        if (t === 'media_assets') r.storage_key = `${ctx.workspaceId}/${r.id}`; // binaries restored separately
         db.insert(t, r);
       }
     }
-    // rebuild search index
-    for (const s of data.sources ?? []) indexDoc(db, ctx.workspaceId, 'source', s.id, s.title, s.text ?? '');
-    for (const i of data.ideas ?? []) indexDoc(db, ctx.workspaceId, 'idea', i.id, i.topic ?? '', i.core_idea);
-    for (const c of data.content_items ?? []) indexDoc(db, ctx.workspaceId, 'content', c.id, c.title ?? '', c.body);
+    for (const s of db.all('SELECT id, title, text FROM sources WHERE workspace_id = ?', ctx.workspaceId)) indexDoc(db, ctx.workspaceId, 'source', s.id, s.title, s.text ?? '');
+    for (const i of db.all('SELECT id, topic, core_idea FROM ideas WHERE workspace_id = ?', ctx.workspaceId)) indexDoc(db, ctx.workspaceId, 'idea', i.id, i.topic ?? '', i.core_idea);
+    for (const c of db.all('SELECT id, title, body FROM content_items WHERE workspace_id = ?', ctx.workspaceId)) indexDoc(db, ctx.workspaceId, 'content', c.id, c.title ?? '', c.body);
   });
   audit(ctx, 'backup.restored', 'workspace', ctx.workspaceId, { from: manifest.workspaceId, counts: manifest.counts });
+  rebuildEmbeddings(ctx);
   return { restored: manifest.counts, schemaVersion: manifest.schemaVersion, appVersion: manifest.appVersion, note: 'Connectorは再認証が必要です。メディアファイルは別途復元してください。' };
 }
 
@@ -223,3 +233,13 @@ export function listAudit(ctx: Ctx, limit = 200) {
 }
 
 export { contentRow, calendar };
+
+/** Vectors are derived data: rebuilt locally after restore (not stored in backups). */
+function rebuildEmbeddings(ctx: Ctx) {
+  const db = ctx.app.db;
+  const put = (refType: string, refId: string, text: string) => db.insert('embeddings', { id: id('emb'), workspace_id: ctx.workspaceId, ref_type: refType, ref_id: refId, model: LOCAL_EMBED_MODEL, vector: JSON.stringify(hashVector(text)), created_at: nowIso(ctx) });
+  db.tx(() => {
+    for (const s of db.all('SELECT id, title, text FROM sources WHERE workspace_id = ? AND text IS NOT NULL', ctx.workspaceId)) put('source', s.id, `${s.title}\n${String(s.text).slice(0, 4000)}`);
+    for (const i of db.all('SELECT id, core_idea FROM ideas WHERE workspace_id = ?', ctx.workspaceId)) put('idea', i.id, i.core_idea);
+  });
+}

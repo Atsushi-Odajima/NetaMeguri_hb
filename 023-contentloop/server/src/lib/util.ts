@@ -34,6 +34,13 @@ export class FixedClock implements Clock {
     this.t = new Date(this.t.getTime() + ms);
   }
 }
+/** Real time + adjustable offset (E2E only; enabled via CONTENTLOOP_TEST_MODE). */
+export class OffsetClock implements Clock {
+  offsetMs = 0;
+  now() {
+    return new Date(Date.now() + this.offsetMs);
+  }
+}
 export const daysBetween = (a: Date | string, b: Date | string) =>
   Math.floor((new Date(b).getTime() - new Date(a).getTime()) / 86400_000);
 
