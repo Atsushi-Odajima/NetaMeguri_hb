@@ -203,7 +203,17 @@ export function SourceDetail() {
         <Card actions={s.segments.length ? <><button className="btn sm" onClick={() => download(api.url(`/sources/${s.id}/subtitles?format=srt`))}>SRT</button><button className="btn sm" onClick={() => download(api.url(`/sources/${s.id}/subtitles?format=vtt`))}>VTT</button></> : null}>
           {s.segments.length ? (
             <ol className="segments">{s.segments.map((g: any) => <li key={g.idx} className={g.inaudible ? 'muted' : ''}><code>{ts(g.startMs)}</code> {g.inaudible ? '［聞き取れない部分］' : g.text}</li>)}</ol>
-          ) : <AttachTranscript id={s.id} onDone={reload} />}
+          ) : (
+            <>
+              {s.fileRef && (
+                <div className="row wrap">
+                  <button className="btn" disabled={a.busy} onClick={async () => { await a.run(() => api.post(`/sources/${s.id}/transcribe`, { provider: 'openai' })); reload(); }}>文字起こしを実行（外部AI）</button>
+                  <span className="small muted">AI ON・プロバイダ設定・この素材の外部AI送信許可が必要です。費用は設定の上限に従います。</span>
+                </div>
+              )}
+              <AttachTranscript id={s.id} onDone={reload} />
+            </>
+          )}
         </Card>
       )}
       {tab === 'text' && <Card><pre className="pre">{s.text || '（本文なし）'}</pre></Card>}

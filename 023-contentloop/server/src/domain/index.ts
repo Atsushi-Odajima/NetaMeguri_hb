@@ -18,12 +18,12 @@ export const LOCAL_EMBED_MODEL = 'local-hash-v1';
  * Store a vector for semantic-ish search/similarity. Default model is a local hashing vector
  * (lexical approximation). External embeddings are used only if enabled AND AI is on.
  */
-export async function upsertEmbedding(ctx: Ctx, refType: string, refId: string, text: string) {
+export async function upsertEmbedding(ctx: Ctx, refType: string, refId: string, text: string, opts: { externalAllowed?: boolean } = {}) {
   const s = getSettings(ctx.app.db, ctx.workspaceId);
   if (s.embeddingProvider === 'off') return null;
   let vector: number[] = hashVector(text);
   let model = LOCAL_EMBED_MODEL;
-  if (s.embeddingProvider === 'openai' && s.aiEnabled) {
+  if (s.embeddingProvider === 'openai' && s.aiEnabled && opts.externalAllowed !== false) {
     const p = ctx.app.ai.providers.get('openai');
     if (p?.configured && p.embed) {
       try {

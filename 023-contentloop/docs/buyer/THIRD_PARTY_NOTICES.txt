@@ -1,0 +1,82 @@
+THIRD_PARTY_NOTICES（第三者ソフトウェア等の表示）
+
+ContentLoop（v0.1.0）は、以下のオープンソースソフトウェアを利用しています。
+各ソフトウェアの著作権は、それぞれの著作権者に帰属します。
+バージョン・ライセンスは、同梱の node_modules/<パッケージ名>/package.json と LICENSE ファイルから
+2026-10-02 時点で確認したものです。依存関係を更新した場合は再確認してください。
+
+■ 実行時の直接依存（package.json "dependencies"）
+  名前 / バージョン / ライセンス / 著作権表示（LICENSEファイルより）
+
+  fastify 5.12.5 / MIT
+    Copyright (c) 2016-present The Fastify team <https://github.com/fastify/fastify#team>
+  @fastify/cookie 11.1.2 / MIT
+    Copyright (c) 2017-present The Fastify team <https://github.com/fastify/fastify#team>
+  @fastify/multipart 9.4.0 / MIT
+    Copyright (c) 2017-present The Fastify team
+  @fastify/static 8.3.0 / MIT
+    Copyright (c) 2017-present The Fastify team
+  @modelcontextprotocol/sdk 1.32.0 / MIT
+    Copyright (c) 2024 Anthropic, PBC
+  zod 3.25.76 / MIT
+    Copyright (c) 2025 Colin McDonnell
+  fflate 0.8.3 / MIT
+    Copyright (c) 2026 Arjun Barrett
+  react 19.3.0 / MIT
+    Copyright (c) Meta Platforms, Inc. and affiliates.
+  react-dom 19.3.0 / MIT
+    Copyright (c) Meta Platforms, Inc. and affiliates.
+  react-router-dom 7.18.4 / MIT
+    Copyright (c) React Training LLC 2015-2019
+    Copyright (c) Remix Software Inc. 2020-2021
+    Copyright (c) Shopify Inc. 2022-2023
+  （react / react-dom / react-router-dom / react-router 等は、ビルド後の Web 画面ファイル（dist/web）に組み込まれます）
+
+■ サーバーの起動に使うツール（package.json では devDependencies ですが、npm start で使用）
+  tsx 4.23.15 / MIT
+    Copyright (c) Hiroki Osame <hiroki.osame@gmail.com>
+  esbuild 0.28.2 / MIT（tsx が内部で使用）
+    Copyright (c) 2020 Evan Wallace
+  ※ Web画面のビルドには vite 7.3.6（MIT, Copyright (c) 2019-present, VoidZero Inc. and Vite contributors）を使います。
+
+■ 間接的な依存（上記パッケージが利用するもの）
+本番用の依存関係ツリーには、上記のほかに約170個のパッケージが含まれます（2026-10-02時点）。
+ライセンスの内訳: MIT 144 / ISC 12 / BlueOak-1.0.0 8 / BSD-3-Clause 6 / BSD-2-Clause 1（重複を含む件数）。
+MIT 以外のもの:
+  BSD-2-Clause: json-schema-typed
+  BSD-3-Clause: fast-uri, light-my-request, qs, secure-json-parse
+  BlueOak-1.0.0: @isaacs/cliui, glob, jackspeak, lru-cache, minimatch, minipass, package-json-from-dist, path-scurry
+  ISC: fastq, foreground-child, inherits, isexe, once, semver, setprototypeof, signal-exit, split2, which, wrappy, zod-to-json-schema
+いずれもソースコード・バイナリでの再配布時に著作権表示とライセンス文の保持を求めるものです。
+完全な一覧とライセンス本文は、ContentLoop フォルダで次のコマンドを実行し、各パッケージの
+LICENSE ファイルを参照してください。
+  npm ls --omit=dev --all
+再配布（販売用ZIPなど）に node_modules を含める場合は、各 LICENSE ファイルを削除せずに同梱してください。
+
+■ Node.js
+ContentLoop は Node.js（22.13 以上）上で動作し、データベースに Node.js 組み込みの node:sqlite を使います。
+Node.js 本体はContentLoopに同梱していません。利用者の環境にインストールされたものを使います
+（Node.js のライセンスは Node.js 配布物の LICENSE を参照してください）。
+
+■ フォント
+・ロゴのワードマーク画像（PNG）は、フォント「DejaVu Sans」で文字を描画（ラスタライズ）して作成しました。
+  DejaVu フォントは Bitstream Vera / DejaVu のライセンスで利用が認められています。
+  フォントファイル自体は ContentLoop に同梱していません。
+・OG画像（og.png）の日本語部分は、作成環境にインストールされていた「IPAGothic」（IPAフォントライセンス）で
+  描画された可能性があります。こちらもフォントファイルは同梱していません。
+・Web画面の文字は、利用者の端末にインストールされているフォントで表示されます。
+
+■ FFmpeg について
+FFmpeg は ContentLoop に同梱していません。この版は動画の変換・編集を行いません。
+将来 FFmpeg を組み込む場合は、ビルド構成により LGPL / GPL の義務が変わるため、法務確認が必要です
+（SOURCE_NOTES.md 第6節）。
+
+■ 外部サービス
+Anthropic / OpenAI の各API、各SNS、Cloudflare / AWS / Supabase / Neon 等は、ContentLoop に同梱されたソフトウェアではなく、
+利用する場合はそれぞれの利用規約・料金に従います。
+各社の名称・商標は、それぞれの権利者に帰属します。
+
+■ MIT License（参考: 上記 MIT ライセンスの本文の要旨）
+各パッケージの正式なライセンス本文は、それぞれの LICENSE ファイルを参照してください。
+MIT License は、著作権表示と許諾表示をソフトウェアのすべての複製または重要な部分に含めることを条件に、
+無償での使用・複製・改変・結合・公開・頒布・再許諾・販売を認め、ソフトウェアは「現状のまま」無保証で提供されるとするものです。

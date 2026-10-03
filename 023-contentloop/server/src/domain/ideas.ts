@@ -5,7 +5,7 @@ import { topKeywords, hashVector } from '../lib/text.js';
 import { audit, getScoped, getSettings, nowIso, requirePerm, type Ctx } from './context.js';
 import { compare, makeFingerprint, fingerprintSimilarity, type Fingerprint, type IdeaRecord, type SimilarityCandidate } from './fingerprint.js';
 import { indexDoc, upsertEmbedding } from './index.js';
-import { getSource } from './sources.js';
+import { getSource, sourcesAllowAI, brandAllows } from './sources.js';
 
 export const IDEA_STATUSES = ['new', 'used', 'reusable', 'overused', 'retired', 'needs_update'] as const;
 export type IdeaStatus = (typeof IDEA_STATUSES)[number];
@@ -45,7 +45,7 @@ export async function createIdea(ctx: Ctx, input: unknown) {
     evergreen: i.evergreen, evergreen_category: i.evergreenCategory, series_id: i.seriesId, origin: i.origin, created_at: nowIso(ctx), updated_at: nowIso(ctx),
   });
   indexDoc(ctx.app.db, ctx.workspaceId, 'idea', iid, topic, i.coreIdea);
-  const eid = await upsertEmbedding(ctx, 'idea', iid, i.coreIdea);
+  const eid = await upsertEmbedding(ctx, 'idea', iid, i.coreIdea, { externalAllowed: sourcesAllowAI(ctx, i.sourceIds) && brandAllows(ctx, i.brandId) });
   if (eid) ctx.app.db.update('ideas', iid, ctx.workspaceId, { embedding_ref: eid });
   audit(ctx, 'idea.created', 'idea', iid, { origin: i.origin });
   // Similar ideas are returned as candidates only. Nothing is merged or deleted automatically.

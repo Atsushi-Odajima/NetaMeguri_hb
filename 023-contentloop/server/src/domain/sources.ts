@@ -83,7 +83,7 @@ export async function importSource(ctx: Ctx, input: unknown, opts: { resolve?: R
     if (s.mediaId) ctx.app.db.run('UPDATE media_assets SET source_id = ? WHERE id = ? AND workspace_id = ?', sid, s.mediaId, ctx.workspaceId);
     indexDoc(ctx.app.db, ctx.workspaceId, 'source', sid, title, text);
   });
-  if (text) await upsertEmbedding(ctx, 'source', sid, `${title}\n${text.slice(0, 4000)}`);
+  if (text) await upsertEmbedding(ctx, 'source', sid, `${title}\n${text.slice(0, 4000)}`, { externalAllowed: s.aiEligible && brandAllows(ctx, s.brandId) });
   // Optional: do not keep original media when configured (transcript/text remain).
   if (s.mediaId && segments.length && !getSettings(ctx.app.db, ctx.workspaceId).storeOriginalMedia) await deleteMedia(ctx, s.mediaId);
   audit(ctx, 'source.imported', 'source', sid, { type: s.type, rights: s.rightsStatus, chars: text.length });
@@ -124,7 +124,7 @@ export async function attachTranscript(ctx: Ctx, sid: string, transcript: string
     ctx.app.db.update('sources', sid, ctx.workspaceId, { text, status: 'analyzed', analysis: JSON.stringify(analyzeText(text, segments)), language: src.language ?? detectLanguage(text), content_hash: contentHashFor(text, src.url) });
     indexDoc(ctx.app.db, ctx.workspaceId, 'source', sid, src.title, text);
   });
-  await upsertEmbedding(ctx, 'source', sid, `${src.title}\n${text.slice(0, 4000)}`);
+  await upsertEmbedding(ctx, 'source', sid, `${src.title}\n${text.slice(0, 4000)}`, { externalAllowed: !!src.ai_eligible && brandAllows(ctx, src.brand_id) });
   audit(ctx, 'source.transcript_attached', 'source', sid, { segments: segments.length });
   return getSource(ctx, sid);
 }
@@ -135,7 +135,7 @@ export async function transcribeMedia(ctx: Ctx, sid: string, providerId: string)
   const src = getScoped(ctx, 'sources', sid);
   const s = getSettings(ctx.app.db, ctx.workspaceId);
   if (!s.aiEnabled) throw badRequest('AIがOFFのため文字起こしは実行できません（Transcriptファイルを手動で添付できます）');
-  if (!src.ai_eligible) throw badRequest('このSourceはAI処理対象外に設定されています');
+  if (!src.ai_eligible || !brandAllows(ctx, src.brand_id)) throw badRequest('このSourceはAI処理対象外に設定されています');
   const p = ctx.app.transcription.providers.get(providerId);
   if (!p?.configured) throw badRequest('文字起こしプロバイダが設定されていません');
   if (!src.file_ref) throw badRequest('メディアファイルがありません');
@@ -191,4 +191,20 @@ export async function deleteSource(ctx: Ctx, sid: string) {
 
 export function sourceLite(r: any) {
   return { id: r.id, title: r.title, type: r.type, url: r.url, author: r.author, rightsStatus: r.rights_status };
+}
+
+/** Brand-level AI eligibility (missing brand → allowed). */
+export function brandAllows(ctx: Ctx, brandId: string | null | undefined) {
+  if (!brandId) return true;
+  const b = ctx.app.db.get('SELECT ai_eligible FROM brands WHERE id = ? AND workspace_id = ?', brandId, ctx.workspaceId);
+  return !b || !!b.ai_eligible;
+}
+
+/** True only if every referenced source (and its brand) allows external AI. */
+export function sourcesAllowAI(ctx: Ctx, sourceIds: string[]) {
+  for (const sid of sourceIds) {
+    const r = ctx.app.db.get('SELECT ai_eligible, brand_id FROM sources WHERE id = ? AND workspace_id = ?', sid, ctx.workspaceId);
+    if (r && (!r.ai_eligible || !brandAllows(ctx, r.brand_id))) return false;
+  }
+  return true;
 }

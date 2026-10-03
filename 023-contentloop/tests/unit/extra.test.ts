@@ -78,3 +78,23 @@ describe('misc', () => {
     expect((b.item as any).id).toBe((a.item as any).id);
   });
 });
+
+describe('AI eligibility (privacy)', () => {
+  it('a source marked not AI-eligible is never sent to an external provider (draft / strategist / translate)', async () => {
+    const { FakeProvider, ARTICLE } = await import('./helpers.js');
+    const { importSource } = await import('../../server/src/domain/sources.js');
+    const { extractIdeas } = await import('../../server/src/domain/ideas.js');
+    const { draftForPlatform, localize } = await import('../../server/src/domain/content.js');
+    const { askStrategist } = await import('../../server/src/domain/search.js');
+    const env = makeEnv();
+    const fake = new FakeProvider('anthropic');
+    env.app.ai.register(fake);
+    updateSettings(env.ctx, { aiProvider: 'anthropic' });
+    const s = await importSource(env.ctx, { type: 'article', title: '社内メモ', text: ARTICLE, rightsStatus: 'owned', aiEligible: false });
+    const ideas = await extractIdeas(env.ctx, s.id);
+    const d = await draftForPlatform(env.ctx, { ideaId: ideas[0].idea.id, platform: 'threads' });
+    await askStrategist(env.ctx, 'まだ使ってないIdeaは？');
+    await expect(localize(env.ctx, d.content.id, 'en')).rejects.toBeTruthy();
+    expect(fake.calls).toHaveLength(0);
+  });
+});

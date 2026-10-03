@@ -6,7 +6,7 @@ import { PACK_KINDS, PLATFORMS, isPlatform, type FormatId, type PlatformId } fro
 import { audit, getScoped, getSettings, nowIso, requirePerm, type Ctx } from './context.js';
 import { brandForGuard, brandLite, defaultBrand, getBrand, type Brand } from './brand.js';
 import { extractIdeas, getIdea, listIdeas, similarIdeas, type Idea } from './ideas.js';
-import { getSegments, sourceLite } from './sources.js';
+import { getSegments, sourceLite, sourcesAllowAI } from './sources.js';
 import { brandGuard, freshnessCheck } from './guards.js';
 import { checkClaims, listClaims } from './claims.js';
 import { indexDoc } from './index.js';
@@ -396,7 +396,7 @@ export async function localize(ctx: Ctx, cid: string, locale: string) {
   const r = await ctx.app.ai.run(
     ctx.workspaceId,
     { task: 'localize', system: `Translate and adapt social copy into ${locale}. Keep brand voice: ${brand?.voiceSummary ?? ''}. Locale tone: ${lp.tone ?? ''}. Notes: ${lp.notes ?? ''}. Do not add facts.`, instruction: 'Localize this post. Output only the post.', data: c.body },
-    { eligible: brand?.aiEligible ?? true, allowed: [c.body, srcText], fallback: () => '' },
+    { eligible: (brand?.aiEligible ?? true) && sourcesAllowAI(ctx, c.sourceIds), allowed: [c.body, srcText], fallback: () => '' },
   );
   translated = !!r.text && r.usedProvider !== 'local';
   if (!translated) throw badRequest('翻訳には外部AIプロバイダの設定とAI ONが必要です（AI OFF時は翻訳しません）');

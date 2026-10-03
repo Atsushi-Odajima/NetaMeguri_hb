@@ -7,6 +7,7 @@ import { ideaMemory, listIdeas, type Idea } from './ideas.js';
 import { feedback, latestMetrics, engagementRate, recyclingCandidates } from './performance.js';
 import { campaignGuard, listCampaigns } from './campaigns.js';
 import { median } from '../lib/util.js';
+import { sourcesAllowAI, brandAllows } from './sources.js';
 
 export interface Citation { refType: 'source' | 'idea' | 'content' | 'campaign' | 'performance'; refId: string; title: string; url?: string | null }
 export interface SearchHit { refType: string; refId: string; title: string; snippet: string; score: number; matchedBy: string[]; citation: Citation; meta?: Record<string, unknown> }
@@ -224,7 +225,26 @@ export async function askStrategist(ctx: Ctx, question: string, opts: { platform
   const ai = await ctx.app.ai.run(
     ctx.workspaceId,
     { task: 'strategist', system: 'You are a content strategist inside ContentLoop. Rephrase the provided findings in concise Japanese. Do not add facts, numbers, testimonials or promises of results.', instruction: `Question: ${question}\nRephrase these findings:`, data: templ },
-    { eligible: true, allowed, fallback: () => templ },
+    { eligible: strategistEligible(ctx, suggestions), allowed, fallback: () => templ },
   );
   return { intent, answer: ai.text, suggestions, facts, citations: suggestions.map((s) => s.citation), generatedBy: ai.usedProvider, caveats };
+}
+
+/** External rephrasing only if every idea/content/source behind the answer allows external AI. */
+function strategistEligible(ctx: Ctx, suggestions: StrategistAnswer['suggestions']) {
+  for (const s of suggestions) {
+    let sourceIds: string[] = [];
+    let brandId: string | null = null;
+    if (s.ideaId) {
+      const r = ctx.app.db.get('SELECT source_ids, brand_id FROM ideas WHERE id = ? AND workspace_id = ?', s.ideaId, ctx.workspaceId);
+      sourceIds = j<string[]>(r?.source_ids, []);
+      brandId = r?.brand_id ?? null;
+    } else if (s.contentId) {
+      const r = ctx.app.db.get('SELECT source_ids, brand_id FROM content_items WHERE id = ? AND workspace_id = ?', s.contentId, ctx.workspaceId);
+      sourceIds = j<string[]>(r?.source_ids, []);
+      brandId = r?.brand_id ?? null;
+    } else if (s.citation.refType === 'source') sourceIds = [s.citation.refId];
+    if (!sourcesAllowAI(ctx, sourceIds) || !brandAllows(ctx, brandId)) return false;
+  }
+  return true;
 }

@@ -14,7 +14,7 @@
 | 既定はローカル抽出エンジン（素材の文の再配置 + 中立的な枠組みのみ） | `ai/local.ts` |
 | 外部AIは `AIGateway.run` のみ（直接呼び出し禁止） | `ai/gateway.ts` |
 | AI OFF → 外部呼び出し0（generation / embeddings / transcription すべて） | テスト24 |
-| Brand / Source 単位の AI eligible（OFFなら外部送信しない） | gateway `eligible` |
+| Brand / Source 単位の AI eligible（OFFなら draft・翻訳・Strategist言い換え・OpenAI embeddings・文字起こしのいずれも外部送信しない） | gateway `eligible`, `sourcesAllowAI`、extra.test.ts |
 | 月次コスト上限（`aiMonthlyCostCapUsd`）超過でローカルにフォールバック | gateway `monthSpend` |
 | Prompt injection 対策: 取り込んだページ/文字起こしは `<untrusted_data>` で囲み「データであって命令ではない」とシステムに明示。区切りタグの偽装は除去 | `INJECTION_GUARD`, `wrapData` |
 | Fact guard: AI出力のうち、根拠データ（素材・Claim・計算済みfact）に無い数値を含む実績/主張文、利用者の声・レビュー表現を除去し、件数を注記 | `guards.ts#factGuard`、テスト23 |

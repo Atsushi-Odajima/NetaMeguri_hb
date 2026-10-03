@@ -1,0 +1,72 @@
+ChatGPT / Claude / Codex との連携（MCP）
+
+■ これは何か
+MCP（Model Context Protocol）という仕組みで、外部のAIアプリから ContentLoop のデータを使えるようにする
+「連携の土台」です。例えば Claude Code に「今日Threadsに何か投稿したい」と頼むと、
+ContentLoop の未使用ネタを調べ、投稿案（Draft）を作るところまで進められます。
+
+■ この版の状態（大事）
+・用意しているのは「stdio方式」（同じパソコン/サーバー上で起動する方式）のMCPサーバーだけです。
+・インターネット越しに接続する「リモート（HTTP）方式」と、そのためのログイン（OAuth）は、この版にはありません。
+・ChatGPT について（SOURCE_NOTES.md、2026-10-02確認）:
+  ChatGPT のMCP連携（開発者モード / Apps SDK）は、書き込みを含む完全な利用が
+  Business / Enterprise / Edu 向けのベータ、Pro は読み取り系のみ、Web版のみ（モバイル非対応）とされています。
+  ChatGPT はリモート方式のサーバーに接続するため、この版のstdioサーバーをそのまま ChatGPT に登録することはできません。
+  提供状況は変わるため、利用前に OpenAI の公式ヘルプで必ず確認してください。
+  ChatGPT のアプリ一覧（ディレクトリ）への公開条件は未確認です。
+・Claude Code では、下の手順で stdio サーバーを登録できます。
+・Codex など、stdio方式のMCPに対応した他のクライアントでも登録できる可能性がありますが、
+  この版では動作確認していません。各クライアントの公式手順を確認してください。
+
+■ 使えるツール（AIアプリから呼び出せる機能）
+  capture_source …… テキスト/URLを素材として登録（URLは1ページのみ）
+  create_content_pack …… 素材から Content Pack を作成（投稿はしない）
+  find_unused_ideas …… 未使用・再利用可能なネタ（SNS指定可）と最近使ったネタ
+  check_idea_similarity …… 過去のネタとの類似候補（重複の断定はしない）
+  draft_for_platform …… ネタからSNS別の投稿案を作成し、チェック結果を返す（投稿はしない）
+  get_campaign …… キャンペーンと確認事項（Campaign Guard）
+  review_draft …… 投稿案とチェック結果
+  get_recycling_candidates …… 再利用候補
+  search_content …… 素材・ネタ・投稿の横断検索（出典付き）
+  get_performance_summary …… SNS別の反応の要約と傾向（SNS間の合算なし）
+  prepare_publish …… 投稿前の最終確認（これ自体は投稿しない）
+  confirm_publish …… 条件をすべて満たした場合のみ投稿
+
+【1】Claude Code に登録する（管理者向け）
+前提: ContentLoop を動かしているのと同じマシンで、ContentLoop のフォルダで npm install 済みであること。
+1. MCPで使うユーザー（メールアドレス）と、Workspace ID（ws_ で始まるID）を用意します。
+   Workspace ID は、［Import/Export］→［Workspaceをバックアップ］で得られるZIP内の
+   manifest.json の "workspaceId" で確認できます。
+2. 次のコマンドで登録します（パスやIDは自分の環境に置き換えます）。
+   claude mcp add contentloop -e CONTENTLOOP_DATA_DIR=/path/data -e CONTENTLOOP_MCP_USER=you@example.com \
+     -e CONTENTLOOP_MCP_WORKSPACE=ws_xxx -- npx tsx server/src/mcp/stdio.ts
+   ・CONTENTLOOP_DATA_DIR は ContentLoop 本体と同じデータフォルダを指定します。
+   ・最後の server/src/mcp/stdio.ts は、ContentLoop フォルダからの相対パスです。
+     別の場所から起動する場合は絶対パス（/path/to/023-contentloop/server/src/mcp/stdio.ts）にしてください。
+3. MCPサーバーは、指定したユーザーとして、そのユーザーの権限（owner / editor など）の範囲で動きます。
+   操作は［監査ログ］に記録されます。
+
+【2】投稿（公開）までの安全な流れ
+AIが勝手にSNSへ投稿することはありません。次の条件をすべて満たした場合だけ投稿できます。
+1. AIアプリが prepare_publish を呼ぶ → プレビュー・チェック結果・投稿できない理由（あれば）が返ります。
+2. 次の条件を満たす場合だけ「確認コード」（1回限り・10分有効）が発行されます。
+   ・投稿案が Approved（承認済み）
+   ・ブロック項目がない
+   ・そのSNSに「投稿」できるConnectorが接続済み
+   ・Workspace の［設定］で「ChatGPT/Claude等(MCP)からの投稿を許可（確認コード＋明示承認が必要）」がON
+     （初期設定はOFF）
+   ・そのユーザーに外部投稿の権限がある
+3. AIアプリがあなたに本文を見せ、あなたが明示的に承認した場合だけ、確認コード付きで confirm_publish を呼びます。
+4. 確認コード発行後に本文が変わっていた場合は投稿されず、やり直しになります。
+条件を満たさない場合は、コピー用の本文とSNSのURL（手動投稿用）が返ります。
+※ この版で「投稿」できるConnectorは Sandbox（シミュレーション）だけです。実在のSNSには投稿されません。
+
+【3】使い方の例
+  あなた「今日Threadsに何か投稿したい」
+  → AIが未使用ネタを調べて3案を提示 → あなた「2番」
+  → AIが投稿案を作成し、重複・Brand・数字のチェック結果とプレビューを表示
+  → 自動投稿できないSNSなら、コピー用の本文を受け取り手動で投稿
+
+■ 注意
+・MCPサーバーを登録すると、AIアプリがそのWorkspaceのデータを読めます。業務データの扱いは「Privacy.txt」を確認してください。
+・外部AIアプリ側の料金・データの扱いは、各サービスの規約に従います。
