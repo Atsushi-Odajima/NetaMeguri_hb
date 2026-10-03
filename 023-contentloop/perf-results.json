@@ -1,10 +1,10 @@
 {
-  "scale": 0.01,
+  "scale": 1,
   "counts": {
-    "sources": 1000,
-    "ideas": 5000,
-    "content": 20000,
-    "snapshots": 200000
+    "sources": 100000,
+    "ideas": 500000,
+    "content": 2000000,
+    "snapshots": 20000000
   },
   "machine": {
     "cpus": 4,
@@ -12,82 +12,82 @@
     "memGB": 17,
     "node": "v22.22.0"
   },
-  "generatedAt": "2026-10-02T23:56:27.064Z",
+  "generatedAt": "2026-10-03T00:04:40.500Z",
   "timings": {
-    "gen.sources": 34,
-    "gen.ideas+fingerprint+vector": 452,
-    "gen.content": 424,
-    "gen.snapshots": 1726,
-    "db.analyze": 47,
+    "gen.sources": 5820,
+    "gen.ideas+fingerprint+vector": 47486,
+    "gen.content": 98170,
+    "gen.snapshots": 206402,
+    "db.analyze": 5130,
     "library.search (fulltext+semantic+filters)": {
       "runs": 20,
-      "p50": 57.9,
-      "p95": 87.1,
-      "max": 87.1
+      "p50": 433.4,
+      "p95": 540.1,
+      "max": 540.1
     },
     "similarity.check (fingerprint vs candidate pool)": {
       "runs": 20,
-      "p50": 75.1,
-      "p95": 96,
-      "max": 96
+      "p50": 196.9,
+      "p95": 254.3,
+      "max": 254.3
     },
     "calendar.month": {
       "runs": 20,
-      "p50": 22.9,
-      "p95": 41.2,
-      "max": 41.2
+      "p50": 46.5,
+      "p95": 69.6,
+      "max": 69.6
     },
     "content.list (status+platform)": {
       "runs": 20,
-      "p50": 2.9,
-      "p95": 5.1,
-      "max": 5.1
+      "p50": 0.1,
+      "p95": 1.1,
+      "max": 1.1
     },
     "performance.summary (30d)": {
       "runs": 3,
-      "p50": 15.5,
-      "p95": 16.1,
-      "max": 16.1
+      "p50": 2347.2,
+      "p95": 2432.2,
+      "max": 2432.2
     },
     "performance.feedback topic (30d)": {
       "runs": 3,
-      "p50": 11.3,
-      "p95": 14.1,
-      "max": 14.1
+      "p50": 2613.6,
+      "p95": 2766,
+      "max": 2766
     },
     "ai.local.analyze (40 sentences)": {
       "runs": 50,
-      "p50": 3.9,
-      "p95": 10.1,
-      "max": 11
+      "p50": 5.5,
+      "p95": 16.3,
+      "max": 18.6
     },
     "ai.local.transform (threads)": {
       "runs": 200,
       "p50": 0.2,
-      "p95": 0.2,
-      "max": 7
+      "p95": 0.3,
+      "max": 8.6
     },
     "embedding.local-hash (1 text)": {
       "runs": 500,
       "p50": 0,
       "p95": 0,
-      "max": 5.5
+      "max": 8.5
     },
-    "queue.runDueJobs (50/batch until drained, 1000 jobs, local rate limit applies)": 357,
+    "queue.runDueJobs (50/batch until drained, 1000 jobs, local rate limit applies)": 304,
     "connector.poll metrics (sandbox, per post)": {
       "runs": 200,
       "p50": 0,
       "p95": 0,
-      "max": 0.2
+      "max": 0.3
     },
     "media.upload 5MB (validate+hash+store)": {
       "runs": 20,
-      "p50": 9.9,
-      "p95": 14.3,
-      "max": 14.3
+      "p50": 35.4,
+      "p95": 60.3,
+      "max": 60.3
     }
   },
-  "dbSizeMB": 82,
+  "dbSizeMB": 8479,
   "queuePublished": 30,
   "queueNote": "connector token bucket (30/min/connector) intentionally throttles; jobs beyond the bucket are re-queued with next_attempt_at",
   "sandboxRemotePosts": 30
