@@ -76,11 +76,11 @@ const LEVEL_JA: Record<SimilarityLevel, string> = { new: '異なります', rela
 export function compare(
   text: string,
   pool: IdeaRecord[],
-  opts: { now: Date; recentlyUsedDays: number; excludeIds?: string[]; vector?: number[] | null; limit?: number },
+  opts: { now: Date; recentlyUsedDays: number; excludeIds?: string[]; vector?: number[] | null; limit?: number; platformOf?: (ideaId: string) => string | null },
 ): SimilarityCandidate[] {
   const fp = makeFingerprint(text);
   const vec = opts.vector ?? null;
-  const out: SimilarityCandidate[] = [];
+  const scored: { idea: IdeaRecord; lex: number; sem: number | null; score: number; level: SimilarityLevel }[] = [];
   for (const idea of pool) {
     if (opts.excludeIds?.includes(idea.id)) continue;
     const lex = fingerprintSimilarity(fp, idea.fingerprint);
@@ -89,6 +89,12 @@ export function compare(
     const score = sem != null ? Math.max(lex, sem * 0.9) : lex;
     const level = levelOf(score);
     if (level === 'new') continue;
+    scored.push({ idea, lex, sem, score, level });
+  }
+  scored.sort((a, b) => b.score - a.score);
+  const out: SimilarityCandidate[] = [];
+  for (const { idea, lex, sem, score, level } of scored.slice(0, opts.limit ?? 5)) {
+    if (idea.lastUsedAt && idea.lastPlatform == null && opts.platformOf) idea.lastPlatform = opts.platformOf(idea.id);
     const days = idea.lastUsedAt ? Math.floor((opts.now.getTime() - new Date(idea.lastUsedAt).getTime()) / 86400_000) : null;
     const recentlyUsed = days != null && days <= opts.recentlyUsedDays && (level === 'similar' || level === 'very_similar');
     const where = idea.lastPlatform ? `${PLATFORM_JA[idea.lastPlatform] ?? idea.lastPlatform}で` : '';
@@ -98,7 +104,7 @@ export function compare(
         : `この内容は未使用のIdea「${idea.coreIdea.slice(0, 30)}」と${LEVEL_JA[level]}。`;
     out.push({ ideaId: idea.id, coreIdea: idea.coreIdea, score, lexicalScore: lex, semanticScore: sem, level, recentlyUsed, daysSinceUse: days, lastPlatform: idea.lastPlatform ?? null, message });
   }
-  return out.sort((a, b) => b.score - a.score).slice(0, opts.limit ?? 5);
+  return out;
 }
 
 /** Options the user can choose when a similarity warning appears. Nothing is deleted automatically. */

@@ -62,6 +62,19 @@ export async function pullConnectorMetrics(ctx: Ctx, contentId: string, window: 
   return recordSnapshot(ctx, { contentId, window, metrics: m, source: 'connector' });
 }
 
+/** Published items since date with their latest snapshot metrics, in one query. */
+export function publishedWithMetrics(ctx: Ctx, since: string) {
+  return ctx.app.db
+    .all<{ id: string; platform: string; format: string; body: string; idea_topic: string | null; idea_angle: string | null; m: string | null }>(
+      `SELECT c.id, c.platform, c.format, c.body, i.topic AS idea_topic, i.angle AS idea_angle,
+        (SELECT s.metrics FROM performance_snapshots s WHERE s.workspace_id = c.workspace_id AND s.content_id = c.id ORDER BY s.captured_at DESC LIMIT 1) AS m
+       FROM content_items c LEFT JOIN ideas i ON i.id = c.idea_id
+       WHERE c.workspace_id = ? AND c.status = 'published' AND c.published_at >= ?`,
+      ctx.workspaceId, since,
+    )
+    .map((r) => ({ ...r, metrics: r.m ? j<Record<string, number>>(r.m, {}) : null }));
+}
+
 export function latestMetrics(ctx: Ctx, contentId: string): Record<string, number> | null {
   const r = ctx.app.db.get('SELECT metrics FROM performance_snapshots WHERE workspace_id = ? AND content_id = ? ORDER BY captured_at DESC LIMIT 1', ctx.workspaceId, contentId);
   return r ? j(r.metrics, {}) : null;
@@ -81,20 +94,19 @@ export function engagementRate(m: Record<string, number>): number | null {
 export function performanceSummary(ctx: Ctx, opts: { days?: number } = {}) {
   requirePerm(ctx, 'read');
   const since = new Date(ctx.app.clock.now().getTime() - (opts.days ?? 90) * 86400_000).toISOString();
-  const rows = ctx.app.db.all("SELECT * FROM content_items WHERE workspace_id = ? AND status = 'published' AND published_at >= ?", ctx.workspaceId, since).map(contentRow);
+  const rows = publishedWithMetrics(ctx, since);
   const byPlatform: Record<string, { posts: number; withMetrics: number; totals: Record<string, number>; medianEngagement: number | null; definition: string }> = {};
-  for (const c of rows) {
-    const b = (byPlatform[c.platform] ??= { posts: 0, withMetrics: 0, totals: {}, medianEngagement: null, definition: METRIC_DEFINITIONS[c.platform] ?? '' });
+  const ers: Record<string, number[]> = {};
+  for (const r of rows) {
+    const b = (byPlatform[r.platform] ??= { posts: 0, withMetrics: 0, totals: {}, medianEngagement: null, definition: METRIC_DEFINITIONS[r.platform as PlatformId] ?? '' });
     b.posts++;
-    const m = latestMetrics(ctx, c.id);
-    if (!m) continue;
+    if (!r.metrics) continue;
     b.withMetrics++;
-    for (const [k, v] of Object.entries(m)) b.totals[k] = (b.totals[k] ?? 0) + v;
+    for (const [k, v] of Object.entries(r.metrics)) b.totals[k] = (b.totals[k] ?? 0) + v;
+    const er = engagementRate(r.metrics);
+    if (er != null) (ers[r.platform] ??= []).push(er);
   }
-  for (const [p, b] of Object.entries(byPlatform)) {
-    const ers = rows.filter((c) => c.platform === p).map((c) => latestMetrics(ctx, c.id)).filter(Boolean).map((m) => engagementRate(m!)).filter((x): x is number => x != null);
-    b.medianEngagement = ers.length ? median(ers) : null;
-  }
+  for (const [p, b] of Object.entries(byPlatform)) b.medianEngagement = ers[p]?.length ? median(ers[p]) : null;
   return { periodDays: opts.days ?? 90, since, byPlatform, crossPlatformTotal: null, note: 'Platformごとに指標の定義が異なるため、Platform間の合算は行いません。' };
 }
 
@@ -106,11 +118,11 @@ export function feedback(ctx: Ctx, dimension: 'topic' | 'angle' | 'format' | 'pl
   requirePerm(ctx, 'read');
   const days = opts.days ?? 90;
   const since = new Date(ctx.app.clock.now().getTime() - days * 86400_000).toISOString();
-  const rows = ctx.app.db.all("SELECT c.*, i.topic AS idea_topic, i.angle AS idea_angle FROM content_items c LEFT JOIN ideas i ON i.id = c.idea_id WHERE c.workspace_id = ? AND c.status = 'published' AND c.published_at >= ?", ctx.workspaceId, since);
+  const rows = publishedWithMetrics(ctx, since);
   const groups = new Map<string, number[]>();
   let withMetrics = 0;
   for (const r of rows) {
-    const m = latestMetrics(ctx, r.id);
+    const m = r.metrics;
     const er = m ? engagementRate(m) : null;
     if (er == null) continue;
     withMetrics++;
@@ -180,14 +192,21 @@ export function setRecycleState(ctx: Ctx, contentId: string, state: string, seas
  *  - seasonal only in configured months
  *  - update_needed: listed but auto-publish forbidden; do_not_reuse excluded
  */
-export function recyclingCandidates(ctx: Ctx, opts: { notify?: boolean } = {}) {
+export function recyclingCandidates(ctx: Ctx, opts: { notify?: boolean; limit?: number } = {}) {
   requirePerm(ctx, 'read');
   const s = getSettings(ctx.app.db, ctx.workspaceId);
   const r = s.reuseRules;
   const now = ctx.app.clock.now();
   const month = now.getUTCMonth() + 1;
   const out: { content: ReturnType<typeof contentRow>; reason: string; suggestions: string[]; daysSincePublish: number; autoPublishAllowed: boolean; metrics: Record<string, number> | null }[] = [];
-  for (const row of ctx.app.db.all("SELECT * FROM content_items WHERE workspace_id = ? AND status = 'published' AND COALESCE(recycle_state,'') != 'do_not_reuse'", ctx.workspaceId)) {
+  const minDays = Math.min(r.highPerformerReuseDays, r.recyclingCandidateAfterDays);
+  const cutoff = new Date(now.getTime() - minDays * 86400_000).toISOString();
+  const rows = ctx.app.db.all(
+    `SELECT * FROM content_items WHERE workspace_id = ? AND status = 'published' AND COALESCE(recycle_state,'') != 'do_not_reuse'
+     AND (published_at <= ? OR recycle_state IN ('seasonal','update_needed')) ORDER BY published_at DESC LIMIT ?`,
+    ctx.workspaceId, cutoff, opts.limit ?? 300,
+  );
+  for (const row of rows) {
     const c = contentRow(row);
     const days = Math.floor((now.getTime() - new Date(c.publishedAt!).getTime()) / 86400_000);
     const state = c.recycleState ?? 'reusable';

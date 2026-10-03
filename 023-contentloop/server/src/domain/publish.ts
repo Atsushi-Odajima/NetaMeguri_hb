@@ -241,7 +241,7 @@ async function processJob(ctx: Ctx, job: any) {
     notify(ctx, { kind: 'schedule_failed', message: '予約後に内容が変更されたため投稿を停止しました（再レビューが必要）', targetType: 'content', targetId: c.id, dedupeKey: `changed:${job.id}` });
     return finish(ctx, job.id, { status: 'failed', last_error: 'content changed after scheduling' });
   }
-  const checks = await runChecks(ctx, c.id);
+  const checks = await runChecks(ctx, c.id, { skipSimilarity: true }); // blocking rules only; similarity is advisory
   if (checks.reuse.some((r) => r.rule === 'needs_update') || checks.blocking) {
     return finish(ctx, job.id, { status: 'failed', last_error: 'blocked by checks (needs update / banned / outdated claim)' });
   }

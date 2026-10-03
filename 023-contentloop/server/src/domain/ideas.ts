@@ -3,7 +3,7 @@ import { j } from '../db/db.js';
 import { id, badRequest } from '../lib/util.js';
 import { topKeywords, hashVector } from '../lib/text.js';
 import { audit, getScoped, getSettings, nowIso, requirePerm, type Ctx } from './context.js';
-import { compare, makeFingerprint, type Fingerprint, type IdeaRecord, type SimilarityCandidate } from './fingerprint.js';
+import { compare, makeFingerprint, fingerprintSimilarity, type Fingerprint, type IdeaRecord, type SimilarityCandidate } from './fingerprint.js';
 import { indexDoc, upsertEmbedding } from './index.js';
 import { getSource } from './sources.js';
 
@@ -104,22 +104,34 @@ function candidatePool(ctx: Ctx, text: string): IdeaRecord[] {
       kws.join(' OR '), ctx.workspaceId,
     );
   }
-  const vecs = new Map<string, number[]>();
-  for (const e of db.all("SELECT ref_id, vector FROM embeddings WHERE workspace_id = ? AND ref_type = 'idea' AND model = 'local-hash-v1' AND ref_id IN (SELECT value FROM json_each(?))", ctx.workspaceId, JSON.stringify(rows.map((r) => r.id)))) {
-    vecs.set(e.ref_id, JSON.parse(e.vector));
-  }
   return rows.map((r) => ({
     id: r.id, coreIdea: r.core_idea, angle: r.angle, topic: r.topic, fingerprint: JSON.parse(r.fingerprint) as Fingerprint,
-    lastUsedAt: r.last_used_at, lastPlatform: r.last_used_at ? lastPlatformOf(ctx, r.id) : null, status: r.status, vector: vecs.get(r.id) ?? null,
+    lastUsedAt: r.last_used_at, lastPlatform: null, status: r.status, vector: null,
   }));
+}
+
+/** Attach stored local vectors only to plausible candidates (cheap lexical pre-filter first). */
+function attachVectors(ctx: Ctx, pool: IdeaRecord[]) {
+  if (!pool.length) return;
+  const byId = new Map(pool.map((p) => [p.id, p]));
+  for (const e of ctx.app.db.all("SELECT ref_id, vector FROM embeddings WHERE workspace_id = ? AND ref_type = 'idea' AND model = 'local-hash-v1' AND ref_id IN (SELECT value FROM json_each(?))", ctx.workspaceId, JSON.stringify([...byId.keys()]))) {
+    byId.get(e.ref_id)!.vector = JSON.parse(e.vector);
+  }
 }
 
 export async function similarIdeas(ctx: Ctx, text: string, opts: { excludeIds?: string[]; limit?: number }) {
   requirePerm(ctx, 'read');
   const s = getSettings(ctx.app.db, ctx.workspaceId);
-  const pool = candidatePool(ctx, text);
+  const fp = makeFingerprint(text);
+  const pool = candidatePool(ctx, text)
+    .map((p) => ({ p, lex: fingerprintSimilarity(fp, p.fingerprint) }))
+    .filter((x) => x.lex >= 0.12)
+    .sort((a, b) => b.lex - a.lex)
+    .slice(0, 400)
+    .map((x) => x.p);
   const vector = s.embeddingProvider === 'off' ? null : hashVector(text);
-  return compare(text, pool, { now: ctx.app.clock.now(), recentlyUsedDays: s.reuseRules.recentlyUsedDays, excludeIds: opts.excludeIds, vector, limit: opts.limit });
+  if (vector) attachVectors(ctx, pool);
+  return compare(text, pool, { now: ctx.app.clock.now(), recentlyUsedDays: s.reuseRules.recentlyUsedDays, excludeIds: opts.excludeIds, vector, limit: opts.limit, platformOf: (iid) => lastPlatformOf(ctx, iid) });
 }
 
 export function recomputeIdeaStatus(ctx: Ctx, ideaId: string) {

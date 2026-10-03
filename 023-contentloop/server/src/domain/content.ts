@@ -204,13 +204,13 @@ export async function transformContent(ctx: Ctx, cid: string, platform: string, 
 
 // ---------------------------------------------------------------- checks
 
-export async function runChecks(ctx: Ctx, cid: string) {
+export async function runChecks(ctx: Ctx, cid: string, opts: { skipSimilarity?: boolean } = {}) {
   const c = getContent(ctx, cid);
   const brand = c.brandId ? getBrand(ctx, c.brandId) : defaultBrand(ctx);
   const claims = listClaims(ctx);
   const text = `${c.title ?? ''}\n${c.body}`;
   const guard = brandGuard(c.body, c.platform, brandForGuard(brand, c.locale ?? undefined), { registeredClaimValues: claims.map((x) => x.value) });
-  const similar = await similarIdeas(ctx, text, { excludeIds: c.ideaId ? [c.ideaId] : [] });
+  const similar = opts.skipSimilarity ? [] : await similarIdeas(ctx, text, { excludeIds: c.ideaId ? [c.ideaId] : [] });
   const rules = getSettings(ctx.app.db, ctx.workspaceId).reuseRules;
   const reuse: { rule: string; message: string; severity: 'warn' | 'block' }[] = [];
   let idea: ReturnType<typeof getIdea> | null = null;

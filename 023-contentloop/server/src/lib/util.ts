@@ -96,10 +96,15 @@ export function zonedToUtc(local: string, tz: string): string {
   for (let i = 0; i < 2; i++) ts = guess - tzOffsetMs(ts, tz);
   return new Date(ts).toISOString();
 }
+const tzFormatters = new Map<string, Intl.DateTimeFormat>();
 export function tzOffsetMs(utcMs: number, tz: string): number {
-  const f = new Intl.DateTimeFormat('en-US', {
-    timeZone: tz, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit',
-  });
+  let f = tzFormatters.get(tz);
+  if (!f) {
+    f = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit',
+    });
+    tzFormatters.set(tz, f);
+  }
   const p = Object.fromEntries(f.formatToParts(new Date(utcMs)).map((x) => [x.type, x.value]));
   const asUtc = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second);
   return asUtc - Math.floor(utcMs / 1000) * 1000;

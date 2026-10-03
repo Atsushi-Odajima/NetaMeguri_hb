@@ -7,6 +7,10 @@ import { seedSample } from './seed/sample.js';
 import { OffsetClock } from './lib/util.js';
 
 const prod = process.env.NODE_ENV === 'production';
+if (prod && (process.env.CONTENTLOOP_SECRET_KEY ?? '').length < 32) {
+  console.error('CONTENTLOOP_SECRET_KEY (32+ chars) is required in production');
+  process.exit(1);
+}
 const dataDir = resolve(process.env.CONTENTLOOP_DATA_DIR ?? './data');
 const testMode = !prod && process.env.CONTENTLOOP_TEST_MODE === '1';
 const app = createApp({ dbPath: `${dataDir}/contentloop.db`, storageDir: `${dataDir}/objects`, sandboxConnectors: process.env.CONTENTLOOP_SANDBOX !== '0', ...(testMode ? { clock: new OffsetClock() } : {}) });

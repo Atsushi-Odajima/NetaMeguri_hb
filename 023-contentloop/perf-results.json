@@ -1,0 +1,94 @@
+{
+  "scale": 0.01,
+  "counts": {
+    "sources": 1000,
+    "ideas": 5000,
+    "content": 20000,
+    "snapshots": 200000
+  },
+  "machine": {
+    "cpus": 4,
+    "cpuModel": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "memGB": 17,
+    "node": "v22.22.0"
+  },
+  "generatedAt": "2026-10-02T23:56:27.064Z",
+  "timings": {
+    "gen.sources": 34,
+    "gen.ideas+fingerprint+vector": 452,
+    "gen.content": 424,
+    "gen.snapshots": 1726,
+    "db.analyze": 47,
+    "library.search (fulltext+semantic+filters)": {
+      "runs": 20,
+      "p50": 57.9,
+      "p95": 87.1,
+      "max": 87.1
+    },
+    "similarity.check (fingerprint vs candidate pool)": {
+      "runs": 20,
+      "p50": 75.1,
+      "p95": 96,
+      "max": 96
+    },
+    "calendar.month": {
+      "runs": 20,
+      "p50": 22.9,
+      "p95": 41.2,
+      "max": 41.2
+    },
+    "content.list (status+platform)": {
+      "runs": 20,
+      "p50": 2.9,
+      "p95": 5.1,
+      "max": 5.1
+    },
+    "performance.summary (30d)": {
+      "runs": 3,
+      "p50": 15.5,
+      "p95": 16.1,
+      "max": 16.1
+    },
+    "performance.feedback topic (30d)": {
+      "runs": 3,
+      "p50": 11.3,
+      "p95": 14.1,
+      "max": 14.1
+    },
+    "ai.local.analyze (40 sentences)": {
+      "runs": 50,
+      "p50": 3.9,
+      "p95": 10.1,
+      "max": 11
+    },
+    "ai.local.transform (threads)": {
+      "runs": 200,
+      "p50": 0.2,
+      "p95": 0.2,
+      "max": 7
+    },
+    "embedding.local-hash (1 text)": {
+      "runs": 500,
+      "p50": 0,
+      "p95": 0,
+      "max": 5.5
+    },
+    "queue.runDueJobs (50/batch until drained, 1000 jobs, local rate limit applies)": 357,
+    "connector.poll metrics (sandbox, per post)": {
+      "runs": 200,
+      "p50": 0,
+      "p95": 0,
+      "max": 0.2
+    },
+    "media.upload 5MB (validate+hash+store)": {
+      "runs": 20,
+      "p50": 9.9,
+      "p95": 14.3,
+      "max": 14.3
+    }
+  },
+  "dbSizeMB": 82,
+  "queuePublished": 30,
+  "queueNote": "connector token bucket (30/min/connector) intentionally throttles; jobs beyond the bucket are re-queued with next_attempt_at",
+  "sandboxRemotePosts": 30
+}
