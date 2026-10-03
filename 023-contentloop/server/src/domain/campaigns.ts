@@ -164,19 +164,23 @@ export function campaignGuard(ctx: Ctx, cid: string) {
 
 // ---------------------------------------------------------------- Calendar
 
+const CALENDAR_LIMIT = 1500;
 export function calendar(ctx: Ctx, from: string, to: string) {
   requirePerm(ctx, 'read');
   const tz = getTimezone(ctx.app.db, ctx.workspaceId);
   const rows = ctx.app.db
     .all(
-      `SELECT * FROM content_items WHERE workspace_id = ? AND status != 'archived' AND COALESCE(scheduled_at, published_at) >= ? AND COALESCE(scheduled_at, published_at) < ? ORDER BY COALESCE(scheduled_at, published_at)`,
-      ctx.workspaceId, from, to,
+      `SELECT * FROM content_items WHERE workspace_id = ? AND status != 'archived' AND COALESCE(scheduled_at, published_at) >= ? AND COALESCE(scheduled_at, published_at) < ? ORDER BY COALESCE(scheduled_at, published_at) LIMIT ?`,
+      ctx.workspaceId, from, to, CALENDAR_LIMIT + 1,
     )
     .map(contentRow);
-  const jobs = ctx.app.db.all("SELECT content_id, mode, status FROM publish_jobs WHERE workspace_id = ? AND status IN ('queued','failed','handoff','running')", ctx.workspaceId);
+  const jobs = ctx.app.db.all("SELECT content_id, mode, status FROM publish_jobs WHERE workspace_id = ? AND status IN ('queued','failed','handoff','running') AND scheduled_at >= ? AND scheduled_at < ?", ctx.workspaceId, from, to);
   const steps = ctx.app.db.all('SELECT s.*, c.name AS campaign_name FROM campaign_steps s JOIN campaigns c ON c.id = s.campaign_id WHERE s.workspace_id = ? AND s.planned_date >= ? AND s.planned_date < ? AND s.content_id IS NULL', ctx.workspaceId, from.slice(0, 10), to.slice(0, 10));
+  const truncated = rows.length > CALENDAR_LIMIT;
+  if (truncated) rows.length = CALENDAR_LIMIT;
   return {
     timezone: tz,
+    truncated,
     entries: rows.map((c) => {
       const at = c.scheduledAt ?? c.publishedAt!;
       const job = jobs.find((x) => x.content_id === c.id);

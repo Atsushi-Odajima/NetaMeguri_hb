@@ -125,6 +125,7 @@ CREATE INDEX IF NOT EXISTS idx_content_idea ON content_items(idea_id);
 CREATE INDEX IF NOT EXISTS idx_content_sched ON content_items(workspace_id, scheduled_at);
 CREATE INDEX IF NOT EXISTS idx_content_when ON content_items(workspace_id, COALESCE(scheduled_at, published_at));
 CREATE INDEX IF NOT EXISTS idx_content_pub ON content_items(workspace_id, status, published_at);
+CREATE INDEX IF NOT EXISTS idx_content_status_plat ON content_items(workspace_id, status, platform, scheduled_at);
 
 CREATE TABLE IF NOT EXISTS content_versions (
   id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, content_id TEXT NOT NULL REFERENCES content_items(id) ON DELETE CASCADE,

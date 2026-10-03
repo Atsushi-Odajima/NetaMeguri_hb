@@ -131,7 +131,7 @@ export function CalendarPage() {
           </select>
         </div>
       </div>
-      {data && <p className="small muted">表示タイムゾーン: {data.timezone}{data.__fromCache ? '（オフライン: キャッシュ表示）' : ''}</p>}
+      {data && <p className="small muted">表示タイムゾーン: {data.timezone}{data.__fromCache ? '（オフライン: キャッシュ表示）' : ''}{data.truncated ? '・件数が多いため先頭1,500件のみ表示（状態で絞り込んでください）' : ''}</p>}
       {loading && <Loading />}
       <Err e={error} />
       <div className="cal">
