@@ -9,8 +9,13 @@ test('E2E-3 campaign 8-stage sequence → calendar with API + manual', async ({ 
   const fmt = (d: Date) => d.toISOString().slice(0, 10);
   await page.goto('/campaigns');
   await page.getByLabel('名前').fill('E2E Launch');
-  await page.getByLabel('開始日').fill(fmt(new Date(today.getTime() + 86400_000)));
-  await page.getByLabel('終了日').fill(fmt(new Date(today.getTime() + 15 * 86400_000)));
+  const pickDate = async (label: string, d: Date) => {
+    await page.getByLabel(`${label} 年`).selectOption(String(d.getFullYear()));
+    await page.getByLabel(`${label} 月`).selectOption(String(d.getMonth() + 1));
+    await page.getByLabel(`${label} 日`).selectOption(String(d.getDate()));
+  };
+  await pickDate('開始日', new Date(today.getTime() + 86400_000));
+  await pickDate('終了日', new Date(today.getTime() + 15 * 86400_000));
   await page.getByLabel('Key Message（1行に1つ）').fill('リリース前の不安を減らす\n14日間の無料トライアル');
   await page.locator('fieldset', { hasText: '使う素材' }).locator('input[type=checkbox]').first().check();
   await page.getByRole('button', { name: '作成して8段階のDraft計画を作る' }).click();

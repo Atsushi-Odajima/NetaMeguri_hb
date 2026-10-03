@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
-import { ANGLE_LABEL, Card, Empty, Err, Loading, Notice, PLATFORM_LABEL, PlatformBadge, Status, Tabs, fmtDate, graphemes, useAction, useLoad, download } from '../ui';
+import { ANGLE_LABEL, Card, Empty, Err, Loading, Notice, PLATFORM_LABEL, PlatformBadge, Status, Tabs, fmtDate, graphemes, useAction, useLoad, download, JaDate, JaTime, jaDateTime, TzSelect, TIMEZONES, FORMAT_LABEL, CAP_LABEL } from '../ui';
 import { SimilarityList } from './Ideas';
 import { offlineQueue, useOnline, useSession } from '../App';
 
@@ -110,7 +110,8 @@ export function PackDetail() {
   );
 }
 
-function Preview({ c, body }: { c: any; body: string }) {
+/** "2026-10-04T09:00" → "2026年10月4日（日）9:00"（入力値そのものを表示。端末の言語設定に依存しない） */
+function Preview({ c, body, brandName }: { c: any; body: string; brandName?: string | null }) {
   const st = c.structured ?? {};
   if (c.format === 'carousel' && st.slides) {
     return (
@@ -123,7 +124,7 @@ function Preview({ c, body }: { c: any; body: string }) {
   }
   return (
     <div className={`preview pv-${c.platform}`}>
-      <div className="pv-h"><span className="pv-avatar" aria-hidden /> <b>Your Brand</b> <span className="small muted">・{PLATFORM_LABEL[c.platform]}</span></div>
+      <div className="pv-h"><span className="pv-avatar" aria-hidden /> <b>{brandName || 'ブランド未設定'}</b> <span className="small muted">・{PLATFORM_LABEL[c.platform]}</span></div>
       {c.format === 'article' || c.format === 'newsletter' ? <div className="pv-article">{c.title && <h3>{c.title}</h3>}<pre className="pre">{body}</pre></div> : <p className="pv-body">{body}</p>}
       {c.format === 'short_video' && st.start && <p className="small">クリップ: {st.start} – {st.end}（{st.topic}）<br />なぜ役立つ: {st.whyUseful}</p>}
     </div>
@@ -202,7 +203,7 @@ export function ContentEditor() {
     <div className="page">
       <div className="hero">
         <div>
-          <h1><PlatformBadge p={c.platform} /> {c.format}</h1>
+          <h1><PlatformBadge p={c.platform} /> {FORMAT_LABEL[c.format] ?? c.format}</h1>
           <p className="small muted">
             <Status s={c.status} /> v{c.version}{c.approvedVersion ? `（承認v${c.approvedVersion}）` : ''}・
             {c.ideaId && <Link to={`/ideas/${c.ideaId}`}>Idea</Link>}
@@ -259,7 +260,7 @@ export function ContentEditor() {
         </div>
         <div className="stack">
           <h3 className="small muted">プレビュー</h3>
-          <Preview c={c} body={body} />
+          <Preview c={c} body={body} brandName={data.brandName} />
           <div className="row wrap">
             <span className="small">別Platformへ変換:</span>
             <select aria-label="変換先" onChange={async (e) => { if (!e.target.value) return; const r = await a.run(() => api.post(`/content/${c.id}/transform`, { platform: e.target.value })); if (r) nav(`/content/${r.content.id}`); }} defaultValue="">
@@ -304,6 +305,7 @@ function PublishPanel({ data, reload }: { data: any; reload: () => void }) {
   const [when, setWhen] = useState(() => {
     const d = new Date(Date.now() + 86400_000);
     d.setMinutes(0);
+    d.setHours(9);
     return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
   });
   const [tz, setTz] = useState(workspace.timezone);
@@ -337,7 +339,7 @@ function PublishPanel({ data, reload }: { data: any; reload: () => void }) {
       <Card title="このPlatformでできること">
         {cap ? (
           <>
-            <div className="row wrap">{cap.effective.map((x: string) => <span key={x} className="tag">{x}</span>)}</div>
+            <div className="row wrap">{cap.effective.map((x: string) => <span key={x} className="tag">{CAP_LABEL[x] ?? x}</span>)}</div>
             <p className="small">{canApi ? 'Connector経由でAPI投稿できます。' : 'API投稿は利用できません（未接続/非対応）。手動投稿（コピー → SNSを開く → 公開済みにする）を使います。'}</p>
             <p className="small muted">{cap.conditions}</p>
             {cap.connectors.some((x: any) => x.simulated) && <p className="small warn-t">接続中のConnectorはSandbox（シミュレーション）です。実SNSには投稿されません。</p>}
@@ -355,9 +357,11 @@ function PublishPanel({ data, reload }: { data: any; reload: () => void }) {
       </Card>
       <Card title="予約">
         <div className="grid2 tight">
-          <label>日時<input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} /></label>
-          <label>タイムゾーン<input value={tz} onChange={(e) => setTz(e.target.value)} /></label>
+          <JaDate label="日付" value={when.slice(0, 10)} yearsBack={0} yearsAhead={2} onChange={(v) => v && setWhen(`${v}T${when.slice(11, 16)}`)} />
+          <JaTime label="時刻" value={when.slice(11, 16)} onChange={(v) => setWhen(`${when.slice(0, 11)}${v}`)} />
+          <TzSelect label="タイムゾーン" value={tz} onChange={setTz} />
         </div>
+        <p className="when-ja" aria-live="polite">予約日時: <b>{jaDateTime(when)}</b>（{TIMEZONES.find(([z]) => z === tz)?.[1] ?? tz}）</p>
         <div className="row wrap">
           <button className="btn" disabled={a.busy || !online} onClick={() => sched('manual')}>リマインダー予約（手動投稿）</button>
           <button className="btn primary" disabled={a.busy || !canApi || !online || c.status !== 'approved'} title={!canApi ? 'API投稿非対応' : c.status !== 'approved' ? 'Approvedが必要' : ''} onClick={() => sched('api')}>API予約投稿</button>

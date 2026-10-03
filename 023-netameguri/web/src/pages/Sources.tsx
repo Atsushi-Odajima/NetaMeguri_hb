@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api, ApiError } from '../api';
-import { Card, Empty, Err, Loading, Notice, Tabs, useAction, useLoad, fmtDate, RIGHTS_LABEL, ANGLE_LABEL, Status, download } from '../ui';
+import { Card, Empty, Err, Loading, Notice, Tabs, useAction, useLoad, fmtDate, RIGHTS_LABEL, ANGLE_LABEL, Status, download, JaDate, FilePick } from '../ui';
 
 const TYPES: [string, string][] = [
   ['video', '動画'], ['audio', '音声'], ['podcast', 'Podcast'], ['article', '記事'], ['blog', 'ブログ'], ['pdf', 'PDF'], ['document', 'ドキュメント'],
@@ -94,7 +94,7 @@ export function NewSource() {
         </div>
         {mode === 'text' && (
           <label>本文<textarea rows={12} value={f.text} onChange={(e) => set('text', e.target.value)} required placeholder="記事・台本・商品説明・メモなどを貼り付け" />
-            <input type="file" accept=".txt,.md" onChange={(e) => readTextFile(e.target.files?.[0])} aria-label="テキストファイルから読み込む" />
+            <FilePick label="テキストファイルから読み込む" accept=".txt,.md" onFile={(f) => readTextFile(f ?? undefined)} />
           </label>
         )}
         {mode === 'url' && (
@@ -107,14 +107,14 @@ export function NewSource() {
         {mode === 'transcript' && (
           <>
             <label>文字起こし（SRT / VTT / [mm:ss] 形式）<textarea rows={12} value={f.transcript} onChange={(e) => set('transcript', e.target.value)} required placeholder={'1\n00:00:00,000 --> 00:00:05,000\nこんにちは…'} /></label>
-            <input type="file" accept=".srt,.vtt,.txt" onChange={(e) => readTextFile(e.target.files?.[0])} aria-label="字幕ファイルから読み込む" />
+            <FilePick label="字幕ファイルから読み込む" accept=".srt,.vtt,.txt" onFile={(f) => readTextFile(f ?? undefined)} />
             <label>元動画URL（任意）<input type="url" value={f.url} onChange={(e) => set('url', e.target.value)} /></label>
             <p className="small muted">聞き取れない箇所は [inaudible] のままにしてください。AIが内容を補完することはありません。</p>
           </>
         )}
         {mode === 'file' && (
           <>
-            <label>ファイル（画像/PDF/音声/動画）<input type="file" accept="image/*,application/pdf,audio/*,video/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} required /></label>
+            <FilePick label="ファイル（画像/PDF/音声/動画）" accept="image/*,application/pdf,audio/*,video/*" onFile={setFile} required />
             <p className="small muted">動画/音声の文字起こしは、AIプロバイダ設定時のみ実行できます。字幕ファイルがあれば下に貼り付けてください。</p>
             <label>文字起こし（任意）<textarea rows={5} value={f.transcript} onChange={(e) => set('transcript', e.target.value)} /></label>
           </>
@@ -124,7 +124,7 @@ export function NewSource() {
             <select value={f.rightsStatus} onChange={(e) => set('rightsStatus', e.target.value)}>{Object.entries(RIGHTS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
           </label>
           <label>作成者<input value={f.author} onChange={(e) => set('author', e.target.value)} /></label>
-          <label>公開日<input type="date" value={f.publishedAt} onChange={(e) => set('publishedAt', e.target.value)} /></label>
+          <JaDate label="公開日" optional yearsBack={15} yearsAhead={0} value={f.publishedAt} onChange={(v) => set('publishedAt', v)} />
         </div>
         <label className="check"><input type="checkbox" checked={f.aiEligible} onChange={(e) => set('aiEligible', e.target.checked)} />外部AIへの送信を許可（OFFの場合は抽出エンジンのみで処理）</label>
         <label className="check"><input type="checkbox" checked={f.evergreen} onChange={(e) => set('evergreen', e.target.checked)} />Evergreen（長く再利用できる素材）</label>

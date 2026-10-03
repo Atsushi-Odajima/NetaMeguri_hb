@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
-import { Card, Empty, Err, Loading, Notice, PLATFORM_LABEL, Status, fmtDate, useAction, useLoad, download } from '../ui';
+import { Card, Empty, Err, Loading, Notice, PLATFORM_LABEL, Status, fmtDate, useAction, useLoad, download, JaTime, FilePick, TzSelect, CAP_LABEL } from '../ui';
 import { offlineQueue, useOnline, useSession, flushOffline } from '../App';
 
 // ---------------------------------------------------------------- Brand
@@ -146,7 +146,7 @@ export function ClaimsPage() {
 
 // ---------------------------------------------------------------- Connectors
 
-const CAP_JA: Record<string, string> = { READ: '読み取り', ANALYTICS_READ: '分析取得', DRAFT_EXPORT: '下書き/手動投稿', SCHEDULE: '予約', PUBLISH: '投稿', DELETE: '削除', UNAVAILABLE: '利用不可' };
+const CAP_JA = CAP_LABEL;
 const DOC_JA: Record<string, string> = { docs: '公式docsで可', conditional: '条件付き', unverified: '未確認', no: '公式APIなし' };
 
 export function ConnectorsPage() {
@@ -240,7 +240,7 @@ export function SettingsPage() {
             <label className="check"><input type="checkbox" checked={s.reReviewOnEditAfterApproval} onChange={(e) => setS({ ...s, reReviewOnEditAfterApproval: e.target.checked })} />承認後に本文を変更したら再レビューにする</label>
             <label className="check"><input type="checkbox" checked={s.mcpPublishAllowed} onChange={(e) => setS({ ...s, mcpPublishAllowed: e.target.checked })} />ChatGPT/Claude等(MCP)からの投稿を許可（確認コード＋明示承認が必要）</label>
             <label className="check"><input type="checkbox" checked={s.storeOriginalMedia} onChange={(e) => setS({ ...s, storeOriginalMedia: e.target.checked })} />文字起こし後も元のメディアを保存する</label>
-            <label>タイムゾーン<input value={tz} onChange={(e) => setTz(e.target.value)} /></label>
+            <TzSelect label="タイムゾーン" value={tz} onChange={setTz} />
           </div>
         </Card>
         <Card title="再利用ルール（Reuse Rules）">
@@ -255,8 +255,8 @@ export function SettingsPage() {
         </Card>
         <Card title="通知">
           <div className="grid2 tight">
-            <label>静かな時間 開始<input type="time" value={s.quietHours?.start ?? ''} onChange={(e) => setS({ ...s, quietHours: { ...(s.quietHours ?? { end: '08:00' }), start: e.target.value } })} /></label>
-            <label>終了<input type="time" value={s.quietHours?.end ?? ''} onChange={(e) => setS({ ...s, quietHours: { ...(s.quietHours ?? { start: '22:00' }), end: e.target.value } })} /></label>
+            <JaTime label="静かな時間 開始" step={15} value={s.quietHours?.start ?? '22:00'} onChange={(v) => setS({ ...s, quietHours: { ...(s.quietHours ?? { end: '08:00' }), start: v } })} />
+            <JaTime label="静かな時間 終了" step={15} value={s.quietHours?.end ?? '08:00'} onChange={(v) => setS({ ...s, quietHours: { ...(s.quietHours ?? { start: '22:00' }), end: v } })} />
             <label>1時間あたりの上限<input type="number" min={1} value={s.notificationMaxPerHour} onChange={(e) => setS({ ...s, notificationMaxPerHour: Number(e.target.value) })} /></label>
           </div>
         </Card>
@@ -299,7 +299,7 @@ export function DataPage() {
       <div className="grid2">
         <Card title="過去投稿をImport（CSV）">
           <p className="small muted">取り込み → プレビュー → 列の対応付け → 重複確認 → 確定。過去投稿からIdea Fingerprintを作り、新しいDraftとの重複を警告できるようにします。</p>
-          <input type="file" accept=".csv,text/csv" onChange={async (e) => setCsv(await (e.target.files?.[0]?.text() ?? Promise.resolve('')))} aria-label="CSVファイル" />
+          <FilePick label="CSVファイル" accept=".csv,text/csv" onFile={async (f) => setCsv(f ? await f.text() : '')} />
           <textarea rows={4} value={csv} onChange={(e) => setCsv(e.target.value)} placeholder="platform,date,text,likes,views" aria-label="CSV" />
           <label>Platform列がない場合<select value={plat} onChange={(e) => setPlat(e.target.value)}>{Object.entries(PLATFORM_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
           <button className="btn" disabled={!csv || a.busy} onClick={async () => { const r = await a.run(() => api.post('/import/preview', { csv, defaultPlatform: plat })); if (r) { setPrev(r); setMapping(r.mapping); setResult(null); } }}>プレビュー</button>
@@ -329,7 +329,7 @@ export function DataPage() {
         <Card title="Backup / Restore">
           <button className="btn" onClick={() => download(api.url('/backup.zip'))}>Workspaceをバックアップ</button>
           <p className="small muted">schemaVersion / appVersion / checksum付き。Connectorのトークンは含みません（復元後に再接続）。メディアファイルは別途（オブジェクトストレージ）バックアップしてください。</p>
-          <label>空のWorkspaceへ復元<input type="file" accept=".zip,application/zip" onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; setRestore(await a.run(() => api.post('/restore', f))); }} /></label>
+          <FilePick label="空のWorkspaceへ復元" accept=".zip,application/zip" onFile={async (f) => { if (!f) return; setRestore(await a.run(() => api.post('/restore', f))); }} />
           {restore && <Notice kind="ok">復元しました: {Object.entries(restore.restored).filter(([, v]) => (v as number) > 0).map(([k, v]) => `${k} ${v}`).join(', ')}</Notice>}
         </Card>
         <Card title="UTMリンク作成">

@@ -7,7 +7,7 @@
 |---|---|---|
 | 型検査 | `npm run typecheck` | エラー 0 |
 | 必須テスト 1–34 + 追加 | `npm test` | **47 / 47 passed**（required 39 + extra 8） |
-| E2E-1〜9 + レスポンシブ5端末 | `npm run test:e2e` | **14 / 14 passed** |
+| E2E-1〜9 + レスポンシブ5端末 + 日本語日付入力 | `npm run test:e2e` | **15 / 15 passed** |
 | 性能試験（SCALE=1） | `SCALE=1 npm run perf` | 下表（`perf-results.json`） |
 
 ## 必須テスト対応（tests/unit/required.test.ts）
@@ -28,6 +28,7 @@
 | 8 | Connector認証失敗→failed→再認証→再実行（リモート投稿は1件のみ） | pass |
 | 9 | Backup→新規ユーザーの空Workspaceへ復元→relation一致・検索可・Connector要再接続 | pass |
 | R | iPhone 13 / Pixel 7 / iPad / iPad横 / PC1366 × 9画面で横スクロールなし・ナビ表示・タップ領域≥44px | pass |
+| J | 英語ロケールのブラウザでも日付・時刻が日本語（年/月/日・時/分）で表示され、標準の日付入力を使わない | pass |
 
 ## 性能試験（SCALE=1: Sources 100k / Ideas 500k / Content 2M / Snapshots 20M、DB 8.5GB）
 | 測定 | p50 | p95 |

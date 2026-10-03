@@ -194,7 +194,8 @@ export async function buildServer(app: App, opts: ServerOptions = {}): Promise<F
   r('get', '/content/:id', async (ctx, req) => {
     const id = p(req).id;
     const c = C.getContent(ctx, id);
-    return { content: c, checks: await C.runChecks(ctx, id), versions: C.listVersions(ctx, id), approvals: C.approvalHistory(ctx, id), comments: C.listComments(ctx, id), snapshots: PF.listSnapshots(ctx, id), jobs: P.listJobs(ctx).filter((j) => j.contentId === id), media: M.listMedia(ctx, { contentId: id }) };
+    const brandName = c.brandId ? app.db.get('SELECT name FROM brands WHERE id = ? AND workspace_id = ?', c.brandId, ctx.workspaceId)?.name ?? null : B.defaultBrand(ctx)?.name ?? null;
+    return { content: c, brandName, checks: await C.runChecks(ctx, id), versions: C.listVersions(ctx, id), approvals: C.approvalHistory(ctx, id), comments: C.listComments(ctx, id), snapshots: PF.listSnapshots(ctx, id), jobs: P.listJobs(ctx).filter((j) => j.contentId === id), media: M.listMedia(ctx, { contentId: id }) };
   });
   r('get', '/content/:id/checks', (ctx, req) => C.runChecks(ctx, p(req).id));
   r('patch', '/content/:id', (ctx, req) => C.updateContent(ctx, p(req).id, body(req)));

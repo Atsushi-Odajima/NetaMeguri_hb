@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api';
-import { Card, Empty, Err, Loading, Notice, PLATFORM_LABEL, PlatformBadge, Status, useAction, useLoad, download, fmtDay } from '../ui';
+import { Card, Empty, Err, Loading, Notice, PLATFORM_LABEL, PlatformBadge, Status, useAction, useLoad, download, fmtDay, JaDate, jaDateTime } from '../ui';
 
 export function CampaignsPage() {
   const { data, error, loading } = useLoad(() => api.get('/campaigns'));
@@ -24,7 +24,7 @@ export function CampaignsPage() {
       <Err e={error} />
       {data && (data.length ? (
         <ul className="list big">
-          {data.map((c: any) => <li key={c.id}><Link to={`/campaigns/${c.id}`}><b>{c.name}</b></Link> <span className="tag">{c.status}</span> <span className="small muted">{c.startDate ?? '—'} 〜 {c.endDate ?? '—'}</span></li>)}
+          {data.map((c: any) => <li key={c.id}><Link to={`/campaigns/${c.id}`}><b>{c.name}</b></Link> <span className="tag">{c.status}</span> <span className="small muted">{c.startDate ? jaDateTime(c.startDate) : '—'} 〜 {c.endDate ? jaDateTime(c.endDate) : '—'}</span></li>)}
         </ul>
       ) : <Empty>キャンペーンはまだありません</Empty>)}
       <Card title="新しいキャンペーン">
@@ -32,8 +32,8 @@ export function CampaignsPage() {
           <div className="grid2 tight">
             <label>名前<input required value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="例: 新アプリ発売" /></label>
             <label>商品<input value={f.product} onChange={(e) => setF({ ...f, product: e.target.value })} /></label>
-            <label>開始日<input type="date" value={f.startDate} onChange={(e) => setF({ ...f, startDate: e.target.value })} /></label>
-            <label>終了日<input type="date" value={f.endDate} onChange={(e) => setF({ ...f, endDate: e.target.value })} /></label>
+            <JaDate label="開始日" optional yearsBack={0} yearsAhead={2} value={f.startDate} onChange={(v) => setF({ ...f, startDate: v })} />
+            <JaDate label="終了日" optional yearsBack={0} yearsAhead={2} value={f.endDate} onChange={(v) => setF({ ...f, endDate: v })} />
           </div>
           <label>目的<input value={f.objective} onChange={(e) => setF({ ...f, objective: e.target.value })} /></label>
           <label>対象<input value={f.audience} onChange={(e) => setF({ ...f, audience: e.target.value })} /></label>
@@ -63,7 +63,7 @@ export function CampaignDetail() {
       <div className="hero">
         <div>
           <h1>{c.name}</h1>
-          <p className="small muted">{c.objective}・{c.startDate} 〜 {c.endDate}・{c.channels.map((x: string) => PLATFORM_LABEL[x]).join(' / ')}</p>
+          <p className="small muted">{c.objective}・{c.startDate ? jaDateTime(c.startDate) : '—'} 〜 {c.endDate ? jaDateTime(c.endDate) : '—'}・{c.channels.map((x: string) => PLATFORM_LABEL[x]).join(' / ')}</p>
         </div>
         <div className="row wrap">
           <button className="btn" disabled={a.busy} onClick={async () => { await a.run(() => api.post(`/campaigns/${c.id}/sequence`, {})); reload(); }}>未作成ステップを再計画</button>
@@ -81,7 +81,7 @@ export function CampaignDetail() {
             const item = c.items.find((i: any) => i.id === s.contentId);
             return (
               <li key={s.id}>
-                <div className="tl-h"><b>{s.stage}</b> <span className="small">{s.plannedDate}</span> {s.platform && <PlatformBadge p={s.platform} />}</div>
+                <div className="tl-h"><b>{s.stage}</b> <span className="small">{s.plannedDate ? jaDateTime(s.plannedDate) : ''}</span> {s.platform && <PlatformBadge p={s.platform} />}</div>
                 {s.keyMessage && <div className="small muted">Key: {s.keyMessage}</div>}
                 {item ? (
                   <Link to={`/content/${item.id}`}>{item.body.slice(0, 80)}… <Status s={item.status} /></Link>

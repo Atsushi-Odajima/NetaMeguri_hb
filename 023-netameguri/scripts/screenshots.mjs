@@ -2,7 +2,7 @@
 import { chromium, devices } from '@playwright/test';
 const BASE = process.argv[2] ?? 'http://localhost:8787';
 const OUT = 'docs/screenshots';
-const b = await chromium.launch();
+const b = await chromium.launch({ args: ['--lang=ja-JP'] });
 const errors = [];
 
 async function session(opts) {
