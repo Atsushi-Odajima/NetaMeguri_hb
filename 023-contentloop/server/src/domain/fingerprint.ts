@@ -86,7 +86,7 @@ export function compare(
     const lex = fingerprintSimilarity(fp, idea.fingerprint);
     const sem = vec && idea.vector ? Math.round(vecCosine(vec, idea.vector) * 1000) / 1000 : null;
     // semantic (optional) can raise but not dominate: max of lexical and 0.9*semantic
-    const score = sem != null ? Math.max(lex, sem * 0.9) : lex;
+    const score = Math.round((sem != null ? Math.max(lex, sem * 0.9) : lex) * 1000) / 1000;
     const level = levelOf(score);
     if (level === 'new') continue;
     scored.push({ idea, lex, sem, score, level });
