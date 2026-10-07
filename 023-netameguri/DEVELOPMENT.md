@@ -12,7 +12,7 @@
 | `npm start` | 本番モードで起動（`dist/web` を配信） |
 | `npm run typecheck` | `tsc --noEmit`（server/web/tests 全体） |
 | `npm test` | 必須テスト 1–34 + 追加（vitest） |
-| `npm run test:e2e` | E2E-1〜9 + レスポンシブ（Playwright。専用データディレクトリ `.e2e-data` を毎回作り直す） |
+| `npm run test:e2e` | E2E-1〜9, 11 + レスポンシブ（Playwright。専用データディレクトリ `.e2e-data` を毎回作り直す。日本語のダウンロード名を確認するには `LC_ALL=C.UTF-8` で実行） |
 | `SCALE=1 npm run perf` | 性能試験（100k/500k/2M/20M）。結果は `perf-results.json` |
 | `npm run assets` | ロゴ/PWAアイコン/OG画像を再生成 |
 | `npm run mcp` | MCP stdio サーバー（環境変数は MCP_PLUGIN.md） |
@@ -36,7 +36,8 @@
 ```
 server/src/
   api/server.ts        HTTPルート・認証・CSRF・CSP・レート制限
-  domain/*.ts          業務ロジック（workspace, brand, sources, ideas, content, publish, performance, campaigns, claims, search, io, misc, notifications）
+  domain/*.ts          業務ロジック（workspace, brand, sources, ideas, content, publish, performance, campaigns, claims, search, io, misc, notifications, delivery=納品パック, notation=表記ゆれ）
+  lib/notation.ts      表記ゆれ照合の純粋関数（単体版 core.js の移植。挙動を変える場合は DECISIONS D22 / MERGED_TOOLS.md を確認）
   ai/local.ts          ローカル抽出エンジン（解析・変換）
   ai/gateway.ts        外部AIの唯一の入口（AI OFF/対象外/上限/fact guard）
   ai/transcription.ts  文字起こし provider 抽象 + SRT/VTT 解析・生成

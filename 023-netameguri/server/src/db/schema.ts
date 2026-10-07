@@ -207,6 +207,12 @@ CREATE TABLE IF NOT EXISTS import_batches (
   rows TEXT NOT NULL, mapping TEXT, result TEXT, created_by TEXT, created_at TEXT NOT NULL
 );
 
+-- NetaMeguri 表記ゆれチェック: one notation dictionary per workspace (rules JSON, same shape as the dictionary file).
+CREATE TABLE IF NOT EXISTS notation_dictionaries (
+  id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL UNIQUE REFERENCES workspaces(id) ON DELETE CASCADE,
+  name TEXT NOT NULL, rules TEXT NOT NULL DEFAULT '[]', updated_by TEXT, updated_at TEXT NOT NULL
+);
+
 CREATE VIRTUAL TABLE IF NOT EXISTS search_fts USING fts5(
   workspace_id UNINDEXED, ref_type UNINDEXED, ref_id UNINDEXED, title, body, tokenize = 'trigram'
 );

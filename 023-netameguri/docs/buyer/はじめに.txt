@@ -36,6 +36,8 @@ Threads・X・LinkedIn・Instagram・ブログ・ニュースレターなどに�
   AIアシスタント …… 「今日なにを投稿する？」などの相談（AI Content Strategist）
   効果分析 …… 反応の記録と傾向
   再利用 …… 過去投稿の再利用候補
+  納品パック …… 投稿（画像＋本文＋投稿日）をクライアント納品用ZIPにまとめる（NetaMeguri 納品パック）
+  表記ゆれチェック …… 表記ルールの辞書と、投稿案の表記ゆれチェック（NetaMeguri 表記ゆれチェック）
   Quick Capture …… スマホからのメモ入力
   Brand Voice …… 文章のトーン・禁止表現など
   Claim Registry …… 価格など、間違えると困る事実の登録
@@ -72,3 +74,4 @@ Threads・X・LinkedIn・Instagram・ブログ・ニュースレターなどに�
   Campaign.txt / 投稿予約と手動投稿.txt / Performance.txt / 過去投稿を再利用する.txt
   AI Content Strategist.txt / SNS Connector.txt / ChatGPT-Codex Plugin.txt / スマホ-PWA.txt
   Privacy.txt / Backup-Export.txt / 運用コスト.txt / 注意事項.txt / THIRD_PARTY_NOTICES.txt
+  納品パック.txt / 表記ゆれチェック.txt

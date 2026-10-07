@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
-import { ANGLE_LABEL, Card, Empty, Err, Loading, Notice, PLATFORM_LABEL, PlatformBadge, Status, Tabs, fmtDate, graphemes, useAction, useLoad, download, JaDate, JaTime, jaDateTime, TzSelect, TIMEZONES, FORMAT_LABEL, CAP_LABEL } from '../ui';
+import { ANGLE_LABEL, Card, Empty, Err, Loading, Notice, PLATFORM_LABEL, PlatformBadge, Status, Tabs, fmtDate, graphemes, useAction, useLoad, download, JaDate, JaTime, jaDateTime, TzSelect, TIMEZONES, FORMAT_LABEL, CAP_LABEL, FilePick } from '../ui';
 import { SimilarityList } from './Ideas';
 import { offlineQueue, useOnline, useSession } from '../App';
+import { NotationPanel } from './Notation';
+import { deliveryZipUrl } from './Delivery';
 
 const MAX: Record<string, number> = { threads: 500, x: 280, linkedin: 3000, instagram: 2200, facebook: 63206, tiktok: 2200, youtube_shorts: 5000, youtube_community: 1500, blog: 20000, newsletter: 15000, generic: 5000 };
 function platformLen(p: string, s: string) {
@@ -88,7 +90,10 @@ export function PackDetail() {
           <h1>コンテンツパック</h1>
           <p className="small muted">{fmtDate(p.createdAt)}・生成: {p.generator}・{p.items.length}件・Source: {p.sourceIds.map((s: string) => <Link key={s} to={`/sources/${s}`}>{s.slice(0, 10)} </Link>)}</p>
         </div>
-        <button className="btn" onClick={() => download(api.url(`/packs/${p.id}/zip`))}>ZIPで書き出し</button>
+        <div className="row wrap">
+          <button className="btn" onClick={() => download(api.url(`/packs/${p.id}/zip`))}>ZIPで書き出し</button>
+          <Link className="btn" to={`/delivery?packId=${p.id}`}>納品パック</Link>
+        </div>
       </div>
       <div className="pack-grid">
         <button className={`pack-k ${kind === 'all' ? 'on' : ''}`} onClick={() => setKind('all')}><b>{p.items.length}</b><span>すべて</span></button>
@@ -139,7 +144,8 @@ export function ContentEditor() {
   const [body, setBody] = useState('');
   const [title, setTitle] = useState('');
   const [saveState, setSaveState] = useState<'saved' | 'dirty' | 'saving' | 'offline' | 'conflict'>('saved');
-  const [tab, setTab] = useState<'checks' | 'publish' | 'history' | 'performance'>('checks');
+  const [sp] = useSearchParams();
+  const [tab, setTab] = useState<'checks' | 'notation' | 'publish' | 'history' | 'performance'>(sp.get('tab') === 'notation' ? 'notation' : 'checks');
   const a = useAction();
   const nav = useNavigate();
   const versionRef = useRef<number>(0);
@@ -257,6 +263,7 @@ export function ContentEditor() {
             </Card>
           )}
           {(c.structured?.notes ?? []).map((n: string) => <Notice key={n} kind="info">{n}</Notice>)}
+          <DeliveryImages contentId={c.id} media={data.media ?? []} readOnly={published} reload={reload} />
         </div>
         <div className="stack">
           <h3 className="small muted">プレビュー</h3>
@@ -271,8 +278,9 @@ export function ContentEditor() {
           </div>
         </div>
       </div>
-      <Tabs value={tab} onChange={setTab} items={[{ id: 'checks', label: `チェック${ch.blocking ? ' ⚠' : ''}` }, { id: 'publish', label: '投稿・予約' }, { id: 'history', label: '履歴・コメント' }, { id: 'performance', label: '反応' }]} />
+      <Tabs value={tab} onChange={setTab} items={[{ id: 'checks', label: `チェック${ch.blocking ? ' ⚠' : ''}` }, { id: 'notation', label: '表記ゆれ' }, { id: 'publish', label: '投稿・予約' }, { id: 'history', label: '履歴・コメント' }, { id: 'performance', label: '反応' }]} />
       {tab === 'checks' && <Checks ch={ch} />}
+      {tab === 'notation' && <NotationPanel contentId={c.id} version={c.version} disabled={published ? '公開済みのContentは置換できません' : saveState !== 'saved' ? '未保存の編集があります。保存してから置換してください' : null} onChanged={reload} />}
       {tab === 'publish' && <PublishPanel data={data} reload={reload} />}
       {tab === 'history' && <History data={data} reload={reload} />}
       {tab === 'performance' && <PerfPanel data={data} reload={reload} />}
@@ -411,6 +419,29 @@ function RecyclePanel({ c, reload }: { c: any; reload: () => void }) {
       </div>
       <Err e={a.error} />
     </div>
+  );
+}
+
+/** Images attached to this post (used by NetaMeguri 納品パック: 001_01.jpg …, JPG/PNG/WEBP, max 10). */
+function DeliveryImages({ contentId, media, readOnly, reload }: { contentId: string; media: any[]; readOnly: boolean; reload: () => void }) {
+  const a = useAction();
+  const images = media.filter((m) => m.kind === 'image');
+  return (
+    <Card title={`画像（${images.length}枚）`} actions={<button className="btn sm" onClick={() => download(deliveryZipUrl({ contentIds: [contentId] }))}>納品パックZIP</button>}>
+      {images.length ? (
+        <div className="row wrap delivery-thumbs">
+          {images.map((m, i) => (
+            <figure key={m.id} style={{ margin: 0, width: 96 }}>
+              <img src={m.url} alt={m.filename ?? ''} style={{ width: 96, height: 96, objectFit: 'cover', borderRadius: 6 }} />
+              <figcaption className="small muted">{String(i + 1).padStart(2, '0')} {m.filename}</figcaption>
+              {!readOnly && <button className="link small" disabled={a.busy} onClick={async () => { if (confirm('この画像を投稿から外しますか？')) { const r = await a.run(() => api.post(`/content/${contentId}/media/${m.id}/detach`, {})); if (r) reload(); } }}>外す</button>}
+            </figure>
+          ))}
+        </div>
+      ) : <p className="small muted">画像はまだありません。</p>}
+      {!readOnly && <FilePick label="画像を追加" accept="image/jpeg,image/png,image/webp" onFile={async (f) => { if (!f) return; const fd = new FormData(); fd.append('contentId', contentId); fd.append('file', f); const r = await a.run(() => api.post('/media', fd)); if (r) reload(); }} />}
+      <Err e={a.error} />
+    </Card>
   );
 }
 

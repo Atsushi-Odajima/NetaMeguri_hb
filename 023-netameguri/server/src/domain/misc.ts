@@ -76,6 +76,17 @@ export function listMedia(ctx: Ctx, q: { sourceId?: string; contentId?: string }
   return ctx.app.db.all('SELECT * FROM media_assets WHERE workspace_id = ? AND (? IS NULL OR source_id = ?) AND (? IS NULL OR content_id = ?)', ctx.workspaceId, q.sourceId ?? null, q.sourceId ?? null, q.contentId ?? null, q.contentId ?? null).map((m) => mediaView(ctx, m));
 }
 
+/** Detach a media file from a ContentItem (the stored object is kept; used by NetaMeguri 納品パック image list). */
+export function detachMedia(ctx: Ctx, contentId: string, mediaId: string) {
+  requirePerm(ctx, 'write');
+  getScoped(ctx, 'content_items', contentId);
+  const m = getScoped(ctx, 'media_assets', mediaId);
+  if (m.content_id !== contentId) throw badRequest('このContentのメディアではありません');
+  ctx.app.db.update('media_assets', mediaId, ctx.workspaceId, { content_id: null });
+  audit(ctx, 'media.detached', 'media', mediaId, { contentId });
+  return { ok: true };
+}
+
 // ---------------------------------------------------------------- UTM
 
 export function buildUtm(input: { url: string; source: string; medium?: string; campaign?: string; content?: string; term?: string }) {

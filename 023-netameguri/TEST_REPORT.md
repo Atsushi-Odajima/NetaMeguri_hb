@@ -1,4 +1,4 @@
-# TEST_REPORT（実行日 2026-10-03）
+# TEST_REPORT（実行日 2026-10-03／統合機能の追加分 2026-10-07）
 
 環境: Linux コンテナ / 4 vCPU (Xeon 2.1GHz) / 17GB RAM / Node v22.22.0 / Chromium (Playwright 1.56)
 
@@ -6,8 +6,8 @@
 | 種別 | コマンド | 結果 |
 |---|---|---|
 | 型検査 | `npm run typecheck` | エラー 0 |
-| 必須テスト 1–34 + 追加 | `npm test` | **47 / 47 passed**（required 39 + extra 8） |
-| E2E-1〜9 + レスポンシブ5端末 + 日本語日付入力 | `npm run test:e2e` | **15 / 15 passed** |
+| 必須テスト 1–34 + 追加 + 統合機能 | `npm test` | **81 / 81 passed**（required 39 + extra 8 + delivery 8 + notation 26）。統合前は 47 / 47 |
+| E2E-1〜9, 11 + レスポンシブ5端末 + 日本語日付入力 | `npm run test:e2e` | **16 / 16 passed**（統合前 15 / 15。`LC_ALL=C.UTF-8` と既定ロケールの両方で確認） |
 | 性能試験（SCALE=1） | `SCALE=1 npm run perf` | 下表（`perf-results.json`） |
 
 ## 必須テスト対応（tests/unit/required.test.ts）
@@ -27,7 +27,8 @@
 | 7 | MCP stdio 実クライアント: 未使用Idea→Draft→checks→handoff→承認+設定+確認コードで投稿 | pass |
 | 8 | Connector認証失敗→failed→再認証→再実行（リモート投稿は1件のみ） | pass |
 | 9 | Backup→新規ユーザーの空Workspaceへ復元→relation一致・検索可・Connector要再接続 | pass |
-| R | iPhone 13 / Pixel 7 / iPad / iPad横 / PC1366 × 9画面で横スクロールなし・ナビ表示・タップ領域≥44px | pass |
+| 11 | 表記ゆれ辞書にルール追加（UI）→ 下書きの［表記ゆれ］タブでチェック → 一括置換（v2保存）→［納品パック］で投稿選択→確認→ZIPダウンロード（構成・投稿文.txt・画像を検証） | pass |
+| R | iPhone 13 / Pixel 7 / iPad / iPad横 / PC1366 × 11画面（納品パック・表記ゆれチェックを追加）で横スクロールなし・ナビ表示・タップ領域≥44px | pass |
 | J | 英語ロケールのブラウザでも日付・時刻が日本語（年/月/日・時/分）で表示され、標準の日付入力を使わない | pass |
 
 ## 性能試験（SCALE=1: Sources 100k / Ideas 500k / Content 2M / Snapshots 20M、DB 8.5GB）
@@ -56,3 +57,10 @@
 - 実SNS API / WordPress 実サイト / 外部AI / 文字起こしAPI の実呼び出し（Sandbox・フェイクproviderでのみ検証）
 - ChatGPT からの MCP 接続（本ビルドは stdio。Claude Code 等の stdio クライアントで動作する設計、E2E は SDK クライアントで検証）
 - WebKit(Safari)・Firefox でのE2E（Chromiumのみ）
+
+## 統合機能のテスト（2026-10-07、MERGED_TOOLS.md）
+### tests/unit/delivery.test.ts（NetaMeguri 納品パック, 8件）
+元ツールと同じ構成・命名（`SNS納品パック_日付/001/001_01.jpg`, 投稿文.txt BOM+CRLF, 投稿一覧.csv の見出し）／ホワイトリスト（内部項目・コメントがZIPのどこにも出ない）／STORE・UTF-8フラグ・0x7075 を中央ディレクトリで検査／画像バイト同一／CSV数式対策・HTMLエスケープ・相対パス・外部URLなし／拡張子規則（JPEG→jpeg維持、中身PNGの .jpg→.png、GIF除外）／Workspaceタイムゾーンの日付・時刻／画像10枚上限／Campaign選択の並び順・アーカイブ除外・選択指定の排他／権限（reviewer・viewer 不可、editor 可）とテナント外 404／HTTP（UTF-8 ファイル名ヘッダ、401/403）。生成ZIPは Python zipfile・`unzip -t` でも検証。
+
+### tests/unit/notation.test.ts（NetaMeguri 表記ゆれチェック, 26件）
+単体版 `dev/unit.test.js` の TXT 関連ケースを移植（改行保持、行番号・絵文字位置、正しい表記/その一部の除外、大小区別、単語一致の開始位置 `[0,31,41,49]`、記号端、正規表現特殊文字、長い一致優先、正規化なし、個別置換の位置ずれ追従、無視キーの追従、本文変更時の拒否、競合2種、ルール検証、辞書JSONの往復と不正ファイル17種の拒否、10万文字×500別表記の性能）＋ Workspace 辞書（テナント分離）、個別/一括置換が新しい版になり無視箇所は残る、承認済みの置換で再レビュー、競合は置換不可、読込の全件検証、バックアップ/復元、権限（viewer/reviewer/editor/admin）、HTTP（401・CSRF・403・JSON書出・スキャン）。

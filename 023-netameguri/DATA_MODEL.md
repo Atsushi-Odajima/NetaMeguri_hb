@@ -25,7 +25,8 @@
 | performance_snapshots | content_id, platform, captured_at, window(24h/7d/30d/custom), metrics(JSON), source(connector/csv/manual) | Platform間で合算しない |
 | claims | claim_key, label, value, source, valid_from/to, verified_at/by, history(JSON) | verified は人間のみ |
 | inbox_items | kind, text, url, media_id, client_id(UNIQUE per ws), suggestion | オフライン再送の冪等性 |
-| media_assets | kind, mime, size, storage_key, sha256 | storage key はサーバー生成、署名URLで配信 |
+| media_assets | kind, mime, size, storage_key, sha256 | storage key はサーバー生成、署名URLで配信。content_id の画像は NetaMeguri 納品パックの画像になる |
+| notation_dictionaries | workspace_id(UNIQUE), name, rules(JSON: ruleId/correct/variants/caseSensitive/matchMode/enabled), updated_by/at | NetaMeguri 表記ゆれチェックの辞書（Workspaceに1つ）。バックアップ対象 |
 | notifications | dedupe_key, deliver_after | 24h dedupe・毎時上限・quiet hours |
 | audit_logs | actor_id, action, target, meta | 本文/秘密は入れない |
 | ai_usage | provider, task, tokens, cost_usd | 月次上限判定 |

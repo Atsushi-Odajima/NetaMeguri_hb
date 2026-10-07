@@ -10,7 +10,7 @@ const DEVICES: [string, any][] = [
   ['iPad landscape', devices['iPad (gen 7) landscape']],
   ['Desktop 1366', { viewport: { width: 1366, height: 860 } }],
 ];
-const PAGES = ['/', '/sources', '/ideas', '/calendar', '/inbox', '/library', '/connectors', '/settings', '/performance'];
+const PAGES = ['/', '/sources', '/ideas', '/calendar', '/inbox', '/library', '/connectors', '/settings', '/performance', '/delivery', '/notation'];
 
 for (const [name, d] of DEVICES) {
   test(`responsive: ${name}`, async ({ browser }) => {

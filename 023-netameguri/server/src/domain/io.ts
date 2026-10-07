@@ -144,7 +144,7 @@ export function exportCopyPackage(ctx: Ctx) {
 
 // ---------------------------------------------------------------- Backup / Restore
 
-const BACKUP_TABLES = ['brands', 'sources', 'transcript_segments', 'series', 'ideas', 'idea_uses', 'campaigns', 'campaign_steps', 'briefs', 'content_packs', 'content_items', 'content_versions', 'approvals', 'comments', 'publish_jobs', 'performance_snapshots', 'claims', 'inbox_items', 'notifications', 'audit_logs', 'media_assets'] as const;
+const BACKUP_TABLES = ['brands', 'sources', 'transcript_segments', 'series', 'ideas', 'idea_uses', 'campaigns', 'campaign_steps', 'briefs', 'content_packs', 'content_items', 'content_versions', 'approvals', 'comments', 'publish_jobs', 'performance_snapshots', 'claims', 'inbox_items', 'notifications', 'audit_logs', 'media_assets', 'notation_dictionaries'] as const;
 
 /**
  * Workspace backup (JSON in ZIP). Includes connector config METADATA only (no tokens).
@@ -195,6 +195,7 @@ export function restoreWorkspace(ctx: Ctx, zip: Uint8Array) {
         if (t === 'connectors') Object.assign(r, { token_enc: null, refresh_enc: null, status: 'disconnected' });
         if (t === 'publish_jobs') r.idempotency_key = sha256(`${row.idempotency_key}|${ctx.workspaceId}`);
         if (t === 'media_assets') r.storage_key = `${ctx.workspaceId}/${r.id}`; // binaries restored separately
+        if (t === 'notation_dictionaries') db.run('DELETE FROM notation_dictionaries WHERE workspace_id = ?', ctx.workspaceId); // one per workspace
         db.insert(t, r);
       }
     }

@@ -8,3 +8,4 @@ playwright-report
 .env
 perf-data
 test-results
+.e2e-data

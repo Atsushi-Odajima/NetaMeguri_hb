@@ -35,7 +35,13 @@
 | 29 | Backup / Restore / Audit | ✅ | 再採番復元・relation一致（テスト32, E2E-9）、監査ログ |
 | 30 | 必須 / E2E / performance tests | ✅ | 必須34 + 追加12、E2E 9 + レスポンシブ5、性能試験（TEST_REPORT.md） |
 | 31 | Branding / PWA assets | ✅ | brand/（横/縦/dark/mark）、favicon(svg/32)、apple-touch-icon、192/512/maskable、OG |
-| 32 | 購入者資料 / 運用費 | ✅ | docs/buyer/*.txt（18ファイル）、OPERATING_COSTS.md |
+| 32 | 購入者資料 / 運用費 | ✅ | docs/buyer/*.txt（20ファイル。納品パック.txt / 表記ゆれチェック.txt を追加）、OPERATING_COSTS.md |
+
+## 統合機能（2026-10-07、MERGED_TOOLS.md）
+| # | 機能 | 状態 | 根拠 / 残り |
+|---|---|---|---|
+| M1 | NetaMeguri 納品パック（選択投稿 / Content Pack / Campaign → 納品ZIP） | ✅ | 元ツールと同じZIP構成・命名、ホワイトリスト、STORE+UTF-8、画像10枚・形式制限、権限・テナント（tests/unit/delivery.test.ts 8件, E2E-11）。画像の並べ替えUIは未実装 |
+| M2 | NetaMeguri 表記ゆれチェック（Workspace辞書・検出・個別/一括置換・無視・JSON入出力） | ✅ | core.js 移植＋単体版テストの移植、置換は新しい版として保存・再レビュー連動、権限（tests/unit/notation.test.ts 26件, E2E-11）。TXT/SRTファイル読込とMCPツールは対象外 |
 
 ## Phase 11 の残作業（人間）
 実機確認、本番デプロイ（有料契約を伴う）、実SNSアカウント接続・実投稿、商標確認（名称は NetaMeguri に変更済み）。これらは仕様 §59 により人間の明示承認なしに行っていません。そのため **全体を「完成」とは報告しません**（完成条件 1, 6, 23, 27 に未検証部分あり）。

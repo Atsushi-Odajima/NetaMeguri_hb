@@ -15,11 +15,13 @@ Backup / Export / Import（データの書き出し・バックアップ・取�
   ・Content Pack 画面の［ZIPで書き出し］…… そのPackの投稿案（1件1ファイル＋一覧）
   ・キャンペーン詳細画面の［カレンダーCSV］…… キャンペーンの予定表
   ・素材の［Transcript］タブの［SRT］［VTT］…… 文字起こしの字幕ファイル
+  ・左メニューの［納品パック］…… クライアント納品用ZIP（投稿ごとのフォルダ＋画像＋投稿文.txt）→「納品パック.txt」
+  ・［表記ゆれチェック］画面の［JSONを書き出し］…… 表記ゆれ辞書 →「表記ゆれチェック.txt」
 
 【2】Backup（バックアップ）
 1. 「Backup / Restore」欄の［Workspaceをバックアップ］を押すと、ZIPファイルがダウンロードされます。
 2. 中身: Workspaceの設定、Brand、素材（本文・文字起こしを含む）、ネタ、投稿案と版の履歴、
-   キャンペーン、予約、反応の記録、Claim Registry、監査ログ、Connectorの設定情報など。
+   キャンペーン、予約、反応の記録、Claim Registry、表記ゆれ辞書、監査ログ、Connectorの設定情報など。
    manifest.json に schemaVersion / appVersion / checksum（改ざん・破損の確認用）が入ります。
 3. 含まれないもの:
    ・SNS接続のトークン（復元後に再接続が必要です）

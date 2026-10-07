@@ -17,6 +17,7 @@ NetaMeguri #023 — NEXT STEPS（優先順）
 5. 性能: library.search（全規模 p50 ≈ 0.45s）の semantic 走査を ANN 化、ダッシュボード集計のキャッシュ。
 6. アクセシビリティ監査（スクリーンリーダー・コントラスト）、i18n（UIは日本語のみ）。
 7. パスワードリセット/MFA（Pro: team SSO）。
+8. 統合機能（MERGED_TOOLS.md）の仕上げ: 画面デザイン調整、納品パックの画像並べ替えUI、表記ゆれの MCP ツール化、Org 横断の共有辞書（権限設計が必要）。
 
 ■ Pro版候補（仕様 §52。初版完成前に広げない）
 高度video repurposing、auto captions、image generation、Client Approval Portal、Agency multi-brand、advanced connectors、A/B experiment、social listening、advanced analytics、self-hosted AI、team SSO。

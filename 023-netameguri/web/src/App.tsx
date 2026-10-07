@@ -9,6 +9,8 @@ import { IdeasPage, IdeaDetail } from './pages/Ideas';
 import { PackDetail, ContentEditor, ReviewQueue, ContentList } from './pages/Content';
 import { CampaignsPage, CampaignDetail, CalendarPage } from './pages/Campaigns';
 import { LibraryPage, StrategistPage, PerformancePage, RecyclingPage } from './pages/Insights';
+import { DeliveryPage } from './pages/Delivery';
+import { NotationPage } from './pages/Notation';
 import { BrandPage, ClaimsPage, ConnectorsPage, SettingsPage, DataPage, AuditPage, InboxPage, SharePage } from './pages/Admin';
 
 interface Session {
@@ -60,6 +62,8 @@ const NAV: { to: string; label: string; icon: string; mobile?: boolean }[] = [
   { to: '/strategist', label: 'AIアシスタント', icon: '◎' },
   { to: '/performance', label: '効果分析', icon: '▮' },
   { to: '/recycling', label: '再利用', icon: '↻' },
+  { to: '/delivery', label: '納品パック', icon: '⇪' },
+  { to: '/notation', label: '表記ゆれチェック', icon: '≒' },
   { to: '/inbox', label: 'Quick Capture', icon: '+', mobile: true },
   { to: '/brand', label: 'Brand Voice', icon: '❝' },
   { to: '/claims', label: 'Claim Registry', icon: '§' },
@@ -228,6 +232,8 @@ function Authed() {
           <Route path="/strategist" element={<StrategistPage />} />
           <Route path="/performance" element={<PerformancePage />} />
           <Route path="/recycling" element={<RecyclingPage />} />
+          <Route path="/delivery" element={<DeliveryPage />} />
+          <Route path="/notation" element={<NotationPage />} />
           <Route path="/brand" element={<BrandPage />} />
           <Route path="/claims" element={<ClaimsPage />} />
           <Route path="/connectors" element={<ConnectorsPage />} />

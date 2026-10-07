@@ -19,6 +19,8 @@ import * as SR from '../domain/search.js';
 import * as IO from '../domain/io.js';
 import * as M from '../domain/misc.js';
 import * as N from '../domain/notifications.js';
+import * as DP from '../domain/delivery.js';
+import * as NT from '../domain/notation.js';
 import { PLATFORMS, PACK_KINDS } from '../domain/platforms.js';
 import { buildSubtitles } from '../ai/transcription.js';
 import { getSegments } from '../domain/sources.js';
@@ -287,6 +289,7 @@ export async function buildServer(app: App, opts: ServerOptions = {}): Promise<F
     return M.uploadMedia(ctx, { data: buf, declaredMime: file.mimetype, filename: file.filename, sourceId: fields.sourceId?.value, contentId: fields.contentId?.value });
   });
   r('get', '/media', (ctx, req) => M.listMedia(ctx, q(req)));
+  r('post', '/content/:id/media/:mid/detach', (ctx, req) => M.detachMedia(ctx, p(req).id, p(req).mid));
   r('post', '/utm', (_ctx, req) => M.buildUtm(body(req)));
 
   r('post', '/import/preview', (ctx, req) => IO.importPreview(ctx, String(body(req).csv ?? ''), body(req).defaultPlatform));
@@ -299,6 +302,27 @@ export async function buildServer(app: App, opts: ServerOptions = {}): Promise<F
     if (!Buffer.isBuffer(buf)) throw badRequest('application/zip のバイナリを送信してください');
     return IO.restoreWorkspace(ctx, new Uint8Array(buf));
   });
+  // NetaMeguri 納品パック (client delivery ZIP: folder per post + 投稿文.txt + images + 投稿一覧.csv + 確認用一覧.html)
+  const deliverySel = (src: any): DP.DeliverySelection => ({
+    contentIds: Array.isArray(src.contentIds) ? src.contentIds.map(String) : typeof src.contentIds === 'string' && src.contentIds ? src.contentIds.split(',') : undefined,
+    packId: src.packId ? String(src.packId) : undefined,
+    campaignId: src.campaignId ? String(src.campaignId) : undefined,
+  });
+  r('post', '/delivery-pack/preview', (ctx, req) => DP.previewDeliveryPack(ctx, deliverySel(body(req))));
+  r('get', '/delivery-pack.zip', async (ctx, req, reply) => { const pk = await DP.exportDeliveryPack(ctx, deliverySel(q(req))); return sendFile(reply, pk.zip, 'application/zip', pk.fileName); });
+
+  // NetaMeguri 表記ゆれチェック (workspace notation dictionary + checks on drafts)
+  r('get', '/notation/dictionary', (ctx) => NT.getDictionary(ctx));
+  r('patch', '/notation/dictionary', (ctx, req) => NT.renameDictionary(ctx, body(req).name));
+  r('post', '/notation/rules', (ctx, req) => NT.addRule(ctx, body(req)));
+  r('patch', '/notation/rules/:ruleId', (ctx, req) => NT.updateRule(ctx, p(req).ruleId, body(req)));
+  r('delete', '/notation/rules/:ruleId', (ctx, req) => NT.deleteRule(ctx, p(req).ruleId));
+  r('post', '/notation/import', (ctx, req) => NT.importDictionary(ctx, body(req)));
+  r('get', '/notation/export.json', (ctx, _req, reply) => { const e = NT.exportDictionary(ctx); return sendFile(reply, e.body, e.mime, e.filename); });
+  r('post', '/notation/check', (ctx, req) => NT.checkText(ctx, String(body(req).text ?? '')));
+  r('get', '/notation/scan', (ctx, req) => NT.scanContent(ctx, { status: q(req).status || undefined }));
+  r('post', '/content/:id/notation/check', (ctx, req) => NT.checkContent(ctx, p(req).id, Array.isArray(body(req).ignoredKeys) ? body(req).ignoredKeys.map(String) : []));
+  r('post', '/content/:id/notation/replace', (ctx, req) => NT.replaceInContent(ctx, p(req).id, body(req)));
   r('get', '/relations', (ctx) => IO.relationReport(ctx));
   r('get', '/audit', (ctx) => IO.listAudit(ctx));
   r('get', '/notifications', (ctx) => N.listNotifications(ctx));
@@ -375,6 +399,8 @@ export async function buildServer(app: App, opts: ServerOptions = {}): Promise<F
 
 function sendFile(reply: FastifyReply, data: string | Uint8Array, mime: string, filename: string) {
   reply.header('content-type', mime);
-  reply.header('content-disposition', `attachment; filename="${filename.replace(/[^\w.-]/g, '_')}"`);
+  const ascii = filename.replace(/[^\w.-]/g, '_');
+  // RFC 6266/5987: keep an ASCII fallback and add the UTF-8 name only when it differs (e.g. SNS納品パック_….zip)
+  reply.header('content-disposition', `attachment; filename="${ascii}"${ascii !== filename ? `; filename*=UTF-8''${encodeURIComponent(filename)}` : ''}`);
   return reply.send(typeof data === 'string' ? data : Buffer.from(data));
 }

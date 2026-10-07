@@ -68,6 +68,7 @@ export function CampaignDetail() {
         <div className="row wrap">
           <button className="btn" disabled={a.busy} onClick={async () => { await a.run(() => api.post(`/campaigns/${c.id}/sequence`, {})); reload(); }}>未作成ステップを再計画</button>
           <button className="btn" onClick={() => download(api.url(`/campaigns/${c.id}/export.csv`))}>カレンダーCSV</button>
+          <Link className="btn" to={`/delivery?campaignId=${c.id}`}>納品パック</Link>
         </div>
       </div>
       <Err e={a.error} />
